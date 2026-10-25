@@ -31,11 +31,11 @@ mod principal;
 mod schema_tighten;
 mod session;
 
-pub use attestation::{Attestation, EndReason, SessionEnd, SessionKey};
+pub use attestation::{Attestation, EndReason, EndReasonToken, SessionEnd, SessionKey};
 pub use check::IdentityError;
 pub use principal::{Principal, PrincipalKind};
 pub use serde_json::Value;
-pub use session::{HarnessId, NodeId, OpenToken, SessionRef, Surface};
+pub use session::{HarnessId, HarnessToken, NodeId, SessionRef, Surface, SurfaceToken};
 
 /// Unknown keys kept on a record, in sorted order.
 pub type Extra = serde_json::Map<String, Value>;
@@ -82,10 +82,31 @@ mod schema_tests {
             "$id": "https://github.com/broomva/identity/blob/v0.1.0/schema/identity.v1.json",
             "title": "identity.v1",
             "description": "Wire contract version 1. A version field must be the integer 1. Node ids are 1-64 ASCII alphanumeric characters. Wire tokens are lowercase and reject a doubled hyphen. Opaque ids are 1-256 code points without whitespace or controls. Scope tokens are unique. Extra values are integers in the i64 or u64 range and nest at most 32 levels. An unverified principal has no session. Node equality, lifetime arithmetic, byte length, duplicate keys, and the spelling of an integral number are not expressible here.",
-            "version": CONTRACT_VERSION,
+            "anyOf": [
+                { "$ref": "#/$defs/Principal" },
+                { "$ref": "#/$defs/SessionRef" },
+                { "$ref": "#/$defs/Attestation" },
+                { "$ref": "#/$defs/SessionEnd" },
+                { "$ref": "#/$defs/SessionKey" },
+                { "$ref": "#/$defs/NodeId" },
+                { "$ref": "#/$defs/Surface" },
+                { "$ref": "#/$defs/HarnessId" },
+                { "$ref": "#/$defs/EndReason" }
+            ],
             "$defs": defs,
         });
         schema_tighten::finish(document)
+    }
+
+    #[test]
+    fn root_schema_constrains_the_document_and_has_no_version_keyword() {
+        let document = generated_schema();
+        assert!(document.get("version").is_none());
+        let arms = document
+            .get("anyOf")
+            .and_then(Value::as_array)
+            .expect("root anyOf");
+        assert_eq!(arms.len(), 9);
     }
 
     #[test]

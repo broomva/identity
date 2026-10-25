@@ -4,17 +4,19 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 unset GIT_DIR GIT_WORK_TREE GIT_COMMON_DIR GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES
-# Cargo targets stay on the SSD when this machine has one. GitHub has no such volume.
+# Cargo targets stay on the SSD when this machine has one, unless the caller
+# already chose a directory. GitHub has no such volume.
 if [ -d /Volumes/Broomva/scratch ]; then
   scratch=/Volumes/Broomva/scratch/identity-ci
   mkdir -p "$scratch/tmp" "$scratch/target"
-  export TMPDIR="$scratch/tmp"
-  export CARGO_TARGET_DIR="$scratch/target"
+  if [ -z "${TMPDIR:-}" ]; then
+    export TMPDIR="$scratch/tmp"
+  fi
+  if [ -z "${CARGO_TARGET_DIR:-}" ]; then
+    export CARGO_TARGET_DIR="$scratch/target"
+  fi
 fi
-pyroot="${CARGO_TARGET_DIR:-$PWD/target}/py"
-mkdir -p "$pyroot"
-python3 -m pip install -q --disable-pip-version-check --target "$pyroot" 'jsonschema>=4.18'
-export PYTHONPATH="$pyroot${PYTHONPATH:+:$PYTHONPATH}"
+pin_jsonschema
 export PYTHONDONTWRITEBYTECODE=1
 if [ -x "${HOME}/.bun/bin/bun" ]; then
   export PATH="${HOME}/.bun/bin:${PATH}"

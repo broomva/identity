@@ -12,7 +12,25 @@ const WIRE_PATTERN: &str = "^[a-z0-9][a-z0-9-]*$";
 pub(super) fn finish(mut document: Value) -> Value {
     tighten(&mut document);
     insert_shared_defs(&mut document);
+    strip_nested_schema(&mut document, true);
     document
+}
+
+fn strip_nested_schema(value: &mut Value, root: bool) {
+    let Some(object) = value.as_object_mut() else {
+        if let Some(items) = value.as_array_mut() {
+            for item in items {
+                strip_nested_schema(item, false);
+            }
+        }
+        return;
+    };
+    if !root {
+        object.remove("$schema");
+    }
+    for child in object.values_mut() {
+        strip_nested_schema(child, false);
+    }
 }
 
 fn tighten(value: &mut Value) {
@@ -176,7 +194,7 @@ fn opaque_id_schema() -> Value {
         "type": "string",
         "minLength": 1,
         "maxLength": MAX_ID_BYTES,
-        "pattern": "^[^\\s\\u0000-\\u001F\\u007F-\\u009F]+$",
+        "pattern": "^[^\u{0000}-\u{0020}\u{007F}-\u{00A0}\u{1680}\u{2000}-\u{200A}\u{2028}\u{2029}\u{202F}\u{205F}\u{3000}]+$",
         "not": { "pattern": "\\n" },
         "description": "One to 256 characters, with no whitespace or controls. maxLength counts Unicode code points. The crate counts bytes."
     })

@@ -10,11 +10,30 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use crate::canonical;
 use crate::check::{self, IdentityError};
 use crate::object;
-use crate::session::{NodeId, OpenToken, SessionRef};
+use crate::session::{NodeId, SessionRef};
 use crate::{CONTRACT_VERSION, Extra, Value};
+
+/// Payload of [`EndReason::Other`].
+///
+/// The field is private and the constructor is crate-private. This is not a
+/// [`crate::SurfaceToken`] or a [`crate::HarnessToken`].
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct EndReasonToken(String);
+
+impl EndReasonToken {
+    pub(crate) fn from_validated(raw: &str) -> Self {
+        Self(raw.to_owned())
+    }
+
+    /// The wire token.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
 
 /// Why a session ended. Unknown wire tokens stay [`EndReason::Other`].
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum EndReason {
     /// The work finished.
     Completed,
@@ -25,7 +44,7 @@ pub enum EndReason {
     /// A wire token this crate does not name.
     ///
     /// Build one with [`EndReason::parse`]. A known token is never stored here.
-    Other(OpenToken),
+    Other(EndReasonToken),
 }
 
 impl EndReason {
@@ -40,7 +59,7 @@ impl EndReason {
             "completed" => Self::Completed,
             "revoked" => Self::Revoked,
             "expired" => Self::Expired,
-            other => Self::Other(OpenToken::from_validated(other)),
+            other => Self::Other(EndReasonToken::from_validated(other)),
         })
     }
 
@@ -173,7 +192,6 @@ impl Attestation {
         )?;
         check::require_ttl(issued_at, expires_at)?;
         check::validate_extra(&object)?;
-        check::reject_reserved(&object, ATTESTATION_FIELDS)?;
         Ok(Self {
             version,
             session,
@@ -310,7 +328,6 @@ impl SessionKey {
         )?;
         check::require_ttl(issued_at, expires_at)?;
         check::validate_extra(&object)?;
-        check::reject_reserved(&object, SESSION_KEY_FIELDS)?;
         Ok(Self {
             version,
             session,
@@ -418,7 +435,6 @@ impl SessionEnd {
             "reason must be a string",
         )?)?;
         check::validate_extra(&object)?;
-        check::reject_reserved(&object, SESSION_END_FIELDS)?;
         Ok(Self {
             version,
             session,
@@ -550,7 +566,7 @@ mod open_enum_tests {
         let end = SessionEnd::try_new(
             session,
             1,
-            EndReason::Other(OpenToken::from_validated("completed")),
+            EndReason::Other(EndReasonToken::from_validated("completed")),
             Extra::new(),
         )
         .unwrap();

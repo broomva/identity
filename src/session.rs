@@ -70,16 +70,33 @@ impl<'de> Deserialize<'de> for NodeId {
     }
 }
 
-/// A lowercase wire token stored in an open-enum `Other` arm.
+/// Payload of [`Surface::Other`].
 ///
-/// The fields are private and the constructor is crate-private. [`Surface::parse`],
-/// [`HarnessId::parse`] and [`EndReason`](crate::EndReason) are the public constructors.
-/// Each one stores a known token as its named variant, and refuses a token that
-/// would not deserialize.
+/// The field is private and the constructor is crate-private. This is not a
+/// [`HarnessToken`]: a value parsed for one enum cannot be stored in the other.
+/// Code outside this crate cannot build the payload at all.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct OpenToken(String);
+pub struct SurfaceToken(String);
 
-impl OpenToken {
+impl SurfaceToken {
+    pub(crate) fn from_validated(raw: &str) -> Self {
+        Self(raw.to_owned())
+    }
+
+    /// The wire token.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+/// Payload of [`HarnessId::Other`].
+///
+/// The field is private and the constructor is crate-private. This is not a
+/// [`SurfaceToken`].
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct HarnessToken(String);
+
+impl HarnessToken {
     pub(crate) fn from_validated(raw: &str) -> Self {
         Self(raw.to_owned())
     }
@@ -92,6 +109,7 @@ impl OpenToken {
 
 /// Where a session is attached. Unknown wire tokens stay [`Surface::Other`].
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Surface {
     /// Paseo.
     Paseo,
@@ -102,7 +120,7 @@ pub enum Surface {
     /// A wire token this crate does not name.
     ///
     /// Build one with [`Surface::parse`]. A known token is never stored here.
-    Other(OpenToken),
+    Other(SurfaceToken),
 }
 
 impl Surface {
@@ -117,7 +135,7 @@ impl Surface {
             "paseo" => Self::Paseo,
             "t3" => Self::T3,
             "direct" => Self::Direct,
-            other => Self::Other(OpenToken::from_validated(other)),
+            other => Self::Other(SurfaceToken::from_validated(other)),
         })
     }
 
@@ -153,6 +171,7 @@ impl<'de> Deserialize<'de> for Surface {
 
 /// Which harness is running. `claude` is not an alias of `claude-code`.
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum HarnessId {
     /// Claude Code.
     ClaudeCode,
@@ -165,7 +184,7 @@ pub enum HarnessId {
     /// A wire token this crate does not name.
     ///
     /// Build one with [`HarnessId::parse`]. A known token is never stored here.
-    Other(OpenToken),
+    Other(HarnessToken),
 }
 
 impl HarnessId {
@@ -181,7 +200,7 @@ impl HarnessId {
             "codex" => Self::Codex,
             "gemini" => Self::Gemini,
             "agy" => Self::Agy,
-            other => Self::Other(OpenToken::from_validated(other)),
+            other => Self::Other(HarnessToken::from_validated(other)),
         })
     }
 
@@ -445,8 +464,8 @@ mod open_enum_tests {
     #[test]
     fn try_new_canonicalizes_known_tokens_stuffed_into_other() {
         let session = SessionRef::try_new(
-            Surface::Other(OpenToken::from_validated("t3")),
-            HarnessId::Other(OpenToken::from_validated("claude-code")),
+            Surface::Other(SurfaceToken::from_validated("t3")),
+            HarnessId::Other(HarnessToken::from_validated("claude-code")),
             NodeId::parse("n1").unwrap(),
             "id",
             Extra::new(),
