@@ -1,0 +1,633 @@
+{
+  "$defs": {
+    "Attestation": {
+      "$defs": {
+        "NodeId": {
+          "description": "Tailscale stable node id. One to sixty-four ASCII alphanumeric bytes.",
+          "type": "string"
+        },
+        "SessionRef": {
+          "additionalProperties": true,
+          "description": "One running session: surface, harness, node and a surface-local id.\n\nThe display form is `{surface}:{harness}@{node}/{id}`. It does not carry unknown keys. JSON does.",
+          "properties": {
+            "harness": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "claude-code",
+                    "codex",
+                    "gemini",
+                    "agy"
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "description": "A lowercase wire token. The crate also rejects a doubled hyphen.",
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[a-z0-9][a-z0-9-]*$",
+              "type": "string"
+            },
+            "id": {
+              "type": "string"
+            },
+            "node": {
+              "$ref": "#/$defs/NodeId"
+            },
+            "surface": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "paseo",
+                    "t3",
+                    "direct"
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "description": "A lowercase wire token. The crate also rejects a doubled hyphen.",
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[a-z0-9][a-z0-9-]*$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "surface",
+            "harness",
+            "node",
+            "id"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": true,
+      "description": "A claim that a session may act within a scope on a node until it expires.\n\nThe lifetime is greater than zero and at most one hour. Renewal is a new value.\nThe bound node equals the session node.",
+      "properties": {
+        "expires_at": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "issued_at": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "node": {
+          "$ref": "#/$defs/NodeId"
+        },
+        "scope": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "session": {
+          "$ref": "#/$defs/SessionRef"
+        },
+        "version": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "version",
+        "session",
+        "node",
+        "scope",
+        "issued_at",
+        "expires_at"
+      ],
+      "title": "Attestation",
+      "type": "object"
+    },
+    "EndReason": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "anyOf": [
+        {
+          "enum": [
+            "completed",
+            "revoked",
+            "expired"
+          ]
+        },
+        {
+          "type": "string"
+        }
+      ],
+      "description": "A lowercase wire token. The crate also rejects a doubled hyphen.",
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "title": "EndReason",
+      "type": "string"
+    },
+    "HarnessId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "anyOf": [
+        {
+          "enum": [
+            "claude-code",
+            "codex",
+            "gemini",
+            "agy"
+          ]
+        },
+        {
+          "type": "string"
+        }
+      ],
+      "description": "A lowercase wire token. The crate also rejects a doubled hyphen.",
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "title": "HarnessId",
+      "type": "string"
+    },
+    "NodeId": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "description": "Tailscale stable node id. One to sixty-four ASCII alphanumeric bytes.",
+      "title": "NodeId",
+      "type": "string"
+    },
+    "Principal": {
+      "$defs": {
+        "NodeId": {
+          "description": "Tailscale stable node id. One to sixty-four ASCII alphanumeric bytes.",
+          "type": "string"
+        },
+        "SessionRef": {
+          "additionalProperties": true,
+          "description": "One running session: surface, harness, node and a surface-local id.\n\nThe display form is `{surface}:{harness}@{node}/{id}`. It does not carry unknown keys. JSON does.",
+          "properties": {
+            "harness": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "claude-code",
+                    "codex",
+                    "gemini",
+                    "agy"
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "description": "A lowercase wire token. The crate also rejects a doubled hyphen.",
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[a-z0-9][a-z0-9-]*$",
+              "type": "string"
+            },
+            "id": {
+              "type": "string"
+            },
+            "node": {
+              "$ref": "#/$defs/NodeId"
+            },
+            "surface": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "paseo",
+                    "t3",
+                    "direct"
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "description": "A lowercase wire token. The crate also rejects a doubled hyphen.",
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[a-z0-9][a-z0-9-]*$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "surface",
+            "harness",
+            "node",
+            "id"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "description": "Who is calling. Six closed kinds: owner, owner_device, agent, runner_job, service, unverified. The kind field is not proof.",
+      "oneOf": [
+        {
+          "additionalProperties": true,
+          "properties": {
+            "kind": {
+              "const": "owner",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": true,
+          "properties": {
+            "kind": {
+              "const": "owner_device",
+              "type": "string"
+            },
+            "node": {
+              "$ref": "#/$defs/NodeId"
+            }
+          },
+          "required": [
+            "kind",
+            "node"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": true,
+          "properties": {
+            "kind": {
+              "const": "agent",
+              "type": "string"
+            },
+            "session": {
+              "$ref": "#/$defs/SessionRef"
+            }
+          },
+          "required": [
+            "kind",
+            "session"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": true,
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "runner_job",
+              "type": "string"
+            },
+            "node": {
+              "$ref": "#/$defs/NodeId"
+            }
+          },
+          "required": [
+            "kind",
+            "id",
+            "node"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": true,
+          "properties": {
+            "kind": {
+              "const": "service",
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "name"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": true,
+          "properties": {
+            "kind": {
+              "const": "unverified",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Principal"
+    },
+    "SessionEnd": {
+      "$defs": {
+        "NodeId": {
+          "description": "Tailscale stable node id. One to sixty-four ASCII alphanumeric bytes.",
+          "type": "string"
+        },
+        "SessionRef": {
+          "additionalProperties": true,
+          "description": "One running session: surface, harness, node and a surface-local id.\n\nThe display form is `{surface}:{harness}@{node}/{id}`. It does not carry unknown keys. JSON does.",
+          "properties": {
+            "harness": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "claude-code",
+                    "codex",
+                    "gemini",
+                    "agy"
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "description": "A lowercase wire token. The crate also rejects a doubled hyphen.",
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[a-z0-9][a-z0-9-]*$",
+              "type": "string"
+            },
+            "id": {
+              "type": "string"
+            },
+            "node": {
+              "$ref": "#/$defs/NodeId"
+            },
+            "surface": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "paseo",
+                    "t3",
+                    "direct"
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "description": "A lowercase wire token. The crate also rejects a doubled hyphen.",
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[a-z0-9][a-z0-9-]*$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "surface",
+            "harness",
+            "node",
+            "id"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": true,
+      "description": "A session has ended. This is a record, not a signature.",
+      "properties": {
+        "ended_at": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "enum": [
+                "completed",
+                "revoked",
+                "expired"
+              ]
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "description": "A lowercase wire token. The crate also rejects a doubled hyphen.",
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "type": "string"
+        },
+        "session": {
+          "$ref": "#/$defs/SessionRef"
+        },
+        "version": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "version",
+        "session",
+        "ended_at",
+        "reason"
+      ],
+      "title": "SessionEnd",
+      "type": "object"
+    },
+    "SessionKey": {
+      "$defs": {
+        "NodeId": {
+          "description": "Tailscale stable node id. One to sixty-four ASCII alphanumeric bytes.",
+          "type": "string"
+        },
+        "SessionRef": {
+          "additionalProperties": true,
+          "description": "One running session: surface, harness, node and a surface-local id.\n\nThe display form is `{surface}:{harness}@{node}/{id}`. It does not carry unknown keys. JSON does.",
+          "properties": {
+            "harness": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "claude-code",
+                    "codex",
+                    "gemini",
+                    "agy"
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "description": "A lowercase wire token. The crate also rejects a doubled hyphen.",
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[a-z0-9][a-z0-9-]*$",
+              "type": "string"
+            },
+            "id": {
+              "type": "string"
+            },
+            "node": {
+              "$ref": "#/$defs/NodeId"
+            },
+            "surface": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "paseo",
+                    "t3",
+                    "direct"
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "description": "A lowercase wire token. The crate also rejects a doubled hyphen.",
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[a-z0-9][a-z0-9-]*$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "surface",
+            "harness",
+            "node",
+            "id"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": true,
+      "description": "The public half of a node-bound session key. The secret never enters this type.\n\nThe lifetime rule is the same one-hour rule as an attestation.",
+      "properties": {
+        "expires_at": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "issued_at": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "key_id": {
+          "type": "string"
+        },
+        "node": {
+          "$ref": "#/$defs/NodeId"
+        },
+        "session": {
+          "$ref": "#/$defs/SessionRef"
+        },
+        "version": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "version",
+        "session",
+        "node",
+        "key_id",
+        "issued_at",
+        "expires_at"
+      ],
+      "title": "SessionKey",
+      "type": "object"
+    },
+    "SessionRef": {
+      "$defs": {
+        "NodeId": {
+          "description": "Tailscale stable node id. One to sixty-four ASCII alphanumeric bytes.",
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": true,
+      "description": "One running session: surface, harness, node and a surface-local id.\n\nThe display form is `{surface}:{harness}@{node}/{id}`. It does not carry unknown keys. JSON does.",
+      "properties": {
+        "harness": {
+          "anyOf": [
+            {
+              "enum": [
+                "claude-code",
+                "codex",
+                "gemini",
+                "agy"
+              ]
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "description": "A lowercase wire token. The crate also rejects a doubled hyphen.",
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "node": {
+          "$ref": "#/$defs/NodeId"
+        },
+        "surface": {
+          "anyOf": [
+            {
+              "enum": [
+                "paseo",
+                "t3",
+                "direct"
+              ]
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "description": "A lowercase wire token. The crate also rejects a doubled hyphen.",
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "surface",
+        "harness",
+        "node",
+        "id"
+      ],
+      "title": "SessionRef",
+      "type": "object"
+    },
+    "Surface": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "anyOf": [
+        {
+          "enum": [
+            "paseo",
+            "t3",
+            "direct"
+          ]
+        },
+        {
+          "type": "string"
+        }
+      ],
+      "description": "A lowercase wire token. The crate also rejects a doubled hyphen.",
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "title": "Surface",
+      "type": "string"
+    }
+  },
+  "$id": "https://github.com/broomva/identity/blob/v0.1.0/schema/identity.v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Wire contract version 1. The crate refuses any other version, a node id that is not 1-64 ASCII alphanumeric bytes, an attestation or session key whose lifetime exceeds one hour, and a non-integer number. Unknown keys are preserved.",
+  "title": "identity.v1",
+  "version": 1
+}
