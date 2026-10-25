@@ -102,6 +102,31 @@ session_extra={}
 }
 
 #[test]
+fn canonical_bytes_cover_session_extra() {
+    let attestation = Attestation::try_new(
+        session_parts(
+            "t3",
+            "claude-code",
+            "nwPbDUaNzo11CNTRL",
+            "6ff25f7c",
+            note("from-session"),
+        ),
+        tailscale(),
+        ["read"],
+        1,
+        2,
+        note("kept"),
+    )
+    .unwrap();
+    let text = String::from_utf8(attestation.canonical_bytes()).unwrap();
+    assert!(text.contains("extra={\"note\":\"kept\"}\n"), "{text}");
+    assert!(
+        text.contains("session_extra={\"note\":\"from-session\"}\n"),
+        "{text}"
+    );
+}
+
+#[test]
 fn attestation_round_trips_and_keeps_unknown_keys() {
     let value = serde_json::to_value(golden()).unwrap();
     let back: Attestation = serde_json::from_value(value).unwrap();
