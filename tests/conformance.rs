@@ -44,13 +44,6 @@ const PROBES: &[&str] = &[
     "scope-doubled-dot",
 ];
 
-const INEXPRESSIBLE: &[&str] = &[
-    "bound node equals session node",
-    "lifetime is not arithmetic",
-    "maxLength counts code points",
-    "integral JSON numbers compare equal",
-];
-
 #[derive(Deserialize)]
 struct Fixture {
     kind: String,
@@ -177,13 +170,9 @@ fn judge(path: &Path, bun: &str, want_rust_ok: bool) {
             assert!(fixture.inexpressible.is_none(), "{}", path.display());
         }
         Some("accept") => {
-            assert_eq!(python, "accept", "{}", path.display());
-            let reason = fixture.inexpressible.expect("schema-accept names why");
-            assert!(
-                INEXPRESSIBLE.contains(&reason.as_str()),
-                "{} reason {reason}",
-                path.display()
-            );
+            assert_eq!(python, "reject", "{}", path.display());
+            assert_eq!(typescript, "reject", "{}", path.display());
+            assert!(fixture.inexpressible.is_some(), "{}", path.display());
         }
         other => panic!("{} schema {other:?}", path.display()),
     }
@@ -213,7 +202,5 @@ fn corpus_matches_rust_and_both_language_validators() {
         assert!(path.is_file(), "missing probe {label}");
     }
     let adr = fs::read_to_string(root().join("docs/adr/0001-identity-wire-contract.md")).unwrap();
-    for reason in INEXPRESSIBLE {
-        assert!(adr.contains(reason), "ADR omits {reason}");
-    }
+    assert!(adr.contains("Python and TypeScript reject"));
 }

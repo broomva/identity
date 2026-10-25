@@ -11,6 +11,69 @@ from jsonschema.validators import Draft202012Validator
 
 SCHEMA = json.loads(Path(__file__).with_name("identity.v1.json").read_text())
 VALIDATORS = {}
+I64_MIN = -(2**63)
+I64_MAX = 2**63 - 1
+U64_MAX = 2**64 - 1
+MAX_TTL_MS = 3_600_000
+
+
+class InvalidDocument(ValueError):
+    pass
+
+
+def unique_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise InvalidDocument(f"duplicate key {key!r}")
+        result[key] = value
+    return result
+
+
+def reject_constant(token):
+    raise InvalidDocument(f"invalid number {token}")
+
+
+def semantic_error(kind, value):
+    """Check constraints shared with Rust but not expressible by JSON Schema."""
+    def check_numbers(item):
+        if isinstance(item, bool) or item is None:
+            return None
+        if isinstance(item, int):
+            if item < I64_MIN or item > U64_MAX:
+                return "integer is outside i64/u64 range"
+            return None
+        if isinstance(item, float):
+            return "numbers must use integer JSON syntax"
+        if isinstance(item, list):
+            return next((error for child in item if (error := check_numbers(child))), None)
+        if isinstance(item, dict):
+            return next((error for child in item.values() if (error := check_numbers(child))), None)
+        return None
+
+    error = check_numbers(value)
+    if error:
+        return error
+    if not isinstance(value, dict):
+        return None
+    if kind in ("Attestation", "SessionKey"):
+        session = value.get("session")
+        if not isinstance(session, dict) or value.get("node") != session.get("node"):
+            return "bound node must equal the session node"
+        issued = value.get("issued_at")
+        expires = value.get("expires_at")
+        if not isinstance(issued, int) or isinstance(issued, bool) or not I64_MIN <= issued <= I64_MAX:
+            return "issued_at must be an i64 integer"
+        if not isinstance(expires, int) or isinstance(expires, bool) or not I64_MIN <= expires <= I64_MAX:
+            return "expires_at must be an i64 integer"
+        ttl = expires - issued
+        if ttl <= 0 or ttl > MAX_TTL_MS:
+            return "expiry must be after issued_at and at most 1 hour later"
+    if kind == "SessionEnd":
+        ended = value.get("ended_at")
+        if not isinstance(ended, int) or isinstance(ended, bool) or not I64_MIN <= ended <= I64_MAX:
+            return "ended_at must be an i64 integer"
+    return None
 
 
 def validator(kind):
@@ -43,8 +106,20 @@ def validate(kind, instance):
 
 
 def main():
-    document = json.loads(Path(sys.argv[1]).read_text())
-    print("reject" if validate(document["kind"], document["value"]) else "accept")
+    try:
+        document = json.loads(
+            Path(sys.argv[1]).read_text(),
+            object_pairs_hook=unique_object,
+            parse_constant=reject_constant,
+        )
+        kind = document["kind"]
+        value = document["value"]
+        if not isinstance(kind, str) or semantic_error(kind, value):
+            raise InvalidDocument("semantic validation failed")
+        verdict = validate(kind, value)
+    except (InvalidDocument, KeyError, TypeError, json.JSONDecodeError):
+        verdict = "invalid document"
+    print("reject" if verdict else "accept")
 
 
 if __name__ == "__main__":

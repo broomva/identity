@@ -16,7 +16,15 @@ if [ -d /Volumes/Broomva/scratch ]; then
     export CARGO_TARGET_DIR="$scratch/target"
   fi
 fi
-pin_jsonschema
+JSONSCHEMA_VERSION=4.25.1
+if ! python3 -c "import jsonschema; assert jsonschema.__version__ == '$JSONSCHEMA_VERSION'" 2>/dev/null; then
+  if [ "${IDENTITY_OFFLINE:-0}" = 1 ]; then
+    echo "jsonschema==$JSONSCHEMA_VERSION is required in offline mode" >&2
+    exit 1
+  fi
+  python3 -m pip install --user "jsonschema==$JSONSCHEMA_VERSION"
+fi
+python3 -c "import jsonschema; assert jsonschema.__version__ == '$JSONSCHEMA_VERSION'"
 export PYTHONDONTWRITEBYTECODE=1
 if [ -x "${HOME}/.bun/bin/bun" ]; then
   export PATH="${HOME}/.bun/bin:${PATH}"
