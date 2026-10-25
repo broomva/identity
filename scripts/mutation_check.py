@@ -167,7 +167,7 @@ def check_anchors(root: pathlib.Path) -> int:
     return failed
 
 
-def run(cmd, cwd, log):
+def run(cmd, cwd, log, env):
     with log.open("w") as handle:
         return subprocess.run(
             cmd,
@@ -175,6 +175,7 @@ def run(cmd, cwd, log):
             stdout=handle,
             stderr=subprocess.STDOUT,
             check=False,
+            env=env,
         ).returncode
 
 
@@ -219,7 +220,7 @@ def main() -> int:
     )
     log = copy / "log"
     test_cmd = ["timeout", LIMIT, "cargo", "test", "-q", "--workspace", "--locked"]
-    if run(test_cmd, copy, log) != 0:
+    if run(test_cmd, copy, log, env) != 0:
         print("baseline is red: fix the suite before reading any mutant verdict")
         sys.stdout.write(log.read_text(errors="replace"))
         return 2
@@ -236,7 +237,7 @@ def main() -> int:
             failed = 1
             continue
         file.write_text(text.replace(old, new, 1))
-        code = run(test_cmd, copy, log)
+        code = run(test_cmd, copy, log, env)
         body = log.read_text(errors="replace")
         caught = failing_test(log)
         if code == 0:
