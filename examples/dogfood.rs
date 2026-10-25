@@ -1,7 +1,10 @@
 //! Exercise the crate the way a later Maestro node will: build an owner, an agent
 //! and an attestation, print the canonical bytes, and show a lifetime the crate refuses.
 
-use identity::{Attestation, Extra, HarnessId, MAX_TTL_MS, NodeId, Principal, SessionRef, Surface};
+use identity::{
+    Attestation, EndReason, Extra, HarnessId, MAX_TTL_MS, NodeId, Principal, SessionEnd,
+    SessionRef, Surface,
+};
 
 fn main() {
     println!("contract {version}", version = identity::CONTRACT_VERSION);
@@ -19,6 +22,15 @@ fn main() {
         Extra::new(),
     )
     .expect("session");
+    let mut ended = Extra::new();
+    ended.insert("note".to_owned(), serde_json::json!("ended"));
+    let end = SessionEnd::try_new(
+        session.clone(),
+        1_700_000_000_000,
+        EndReason::Completed,
+        ended,
+    )
+    .expect("session end");
     let agent = Principal::agent(session.clone(), Extra::new()).expect("agent");
     println!(
         "agent {}",
@@ -44,6 +56,10 @@ fn main() {
     print!(
         "{}",
         String::from_utf8(bytes).expect("canonical bytes are utf-8")
+    );
+    print!(
+        "{}",
+        String::from_utf8(end.canonical_bytes()).expect("session end bytes are utf-8")
     );
     let rejected = Attestation::try_new(
         attestation.session().clone(),

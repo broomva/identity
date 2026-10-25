@@ -1,0 +1,8 @@
+{
+  "kind": "Principal",
+  "value": {
+    "kind": "runner_job",
+    "id": "job-1",
+    "node": "n1"
+  }
+}

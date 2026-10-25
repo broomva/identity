@@ -2,9 +2,9 @@
 
 Typed identity of hosts, agents and the owner. Maestro and the change plane share this crate. It is serde only: no keys, no signatures, no permission table.
 
-A `Principal` is one of owner, owner device, agent, runner job, service or unverified. A `SessionRef` is a surface, a harness, a node and an id. An `Attestation` names a session, a node, a scope and an expiry of at most one hour. `Attestation::canonical_bytes` is the UTF-8 document a later verifier signs. This crate does not sign it and does not check a signature.
+A `Principal` is one of owner, owner device, agent, runner job, service or unverified. A `SessionRef` is a surface, a harness, a node and an id. An `Attestation` names a session, a node, a scope and an expiry of at most one hour. `Attestation::canonical_bytes` and `SessionEnd::canonical_bytes` are the UTF-8 documents a later verifier signs. This crate does not sign them and does not check a signature.
 
-The wire version is 1. Unknown JSON keys are kept. The JSON Schema is `schema/identity.v1.json`.
+The wire version is 1. Unknown JSON keys are kept. A repeated key is rejected. The JSON Schema is `schema/identity.v1.json`. `scripts/generate_bindings.py` writes Python and TypeScript bindings from that schema. `fixtures/conformance` is the corpus Rust, Python `jsonschema`, and the TypeScript validator share. The schema cannot express node equality, lifetime arithmetic, byte length, duplicate keys, or the spelling `1.0`. Those stay Rust rules. Decisions are in `docs/adr/0001-identity-wire-contract.md`.
 
 ```rust
 use identity::{Extra, NodeId, Principal};
@@ -28,4 +28,4 @@ cargo run --example dogfood
 bash scripts/ci.sh
 ```
 
-`scripts/ci.sh` runs fmt, clippy, tests and mutation. Decisions are in `docs/adr/0001-identity-wire-contract.md`.
+`scripts/ci.sh` runs binding generation, fmt, clippy, tests and mutation. The tests shell out to `python3` (with `jsonschema`) and `bun`.

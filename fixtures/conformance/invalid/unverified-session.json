@@ -1,0 +1,14 @@
+{
+  "kind": "Principal",
+  "rust_error": "unverified principal carries no session",
+  "schema": "reject",
+  "value": {
+    "kind": "unverified",
+    "session": {
+      "surface": "t3",
+      "harness": "codex",
+      "node": "n1",
+      "id": "s1"
+    }
+  }
+}

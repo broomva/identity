@@ -1,0 +1,16 @@
+{
+  "kind": "SessionKey",
+  "value": {
+    "version": 1,
+    "session": {
+      "surface": "t3",
+      "harness": "codex",
+      "node": "n1",
+      "id": "s1"
+    },
+    "node": "n1",
+    "key_id": "key-1",
+    "issued_at": 1,
+    "expires_at": 2
+  }
+}

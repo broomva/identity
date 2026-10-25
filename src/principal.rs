@@ -302,7 +302,7 @@ impl Serialize for Principal {
 
 impl<'de> Deserialize<'de> for Principal {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let value = Value::deserialize(deserializer)?;
+        let value = object::deserialize_value(deserializer)?;
         Self::from_value(value).map_err(D::Error::custom)
     }
 }

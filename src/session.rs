@@ -70,6 +70,26 @@ impl<'de> Deserialize<'de> for NodeId {
     }
 }
 
+/// A lowercase wire token stored in an open-enum `Other` arm.
+///
+/// The fields are private and the constructor is crate-private. [`Surface::parse`],
+/// [`HarnessId::parse`] and [`EndReason`](crate::EndReason) are the public constructors.
+/// Each one stores a known token as its named variant, and refuses a token that
+/// would not deserialize.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct OpenToken(String);
+
+impl OpenToken {
+    pub(crate) fn from_validated(raw: &str) -> Self {
+        Self(raw.to_owned())
+    }
+
+    /// The wire token.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
 /// Where a session is attached. Unknown wire tokens stay [`Surface::Other`].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Surface {
@@ -80,7 +100,9 @@ pub enum Surface {
     /// A direct session, with no surface product in front.
     Direct,
     /// A wire token this crate does not name.
-    Other(String),
+    ///
+    /// Build one with [`Surface::parse`]. A known token is never stored here.
+    Other(OpenToken),
 }
 
 impl Surface {
@@ -95,7 +117,7 @@ impl Surface {
             "paseo" => Self::Paseo,
             "t3" => Self::T3,
             "direct" => Self::Direct,
-            other => Self::Other(other.to_owned()),
+            other => Self::Other(OpenToken::from_validated(other)),
         })
     }
 
@@ -105,7 +127,7 @@ impl Surface {
             Self::Paseo => "paseo",
             Self::T3 => "t3",
             Self::Direct => "direct",
-            Self::Other(token) => token,
+            Self::Other(token) => token.as_str(),
         }
     }
 }
@@ -141,7 +163,9 @@ pub enum HarnessId {
     /// Antigravity.
     Agy,
     /// A wire token this crate does not name.
-    Other(String),
+    ///
+    /// Build one with [`HarnessId::parse`]. A known token is never stored here.
+    Other(OpenToken),
 }
 
 impl HarnessId {
@@ -157,7 +181,7 @@ impl HarnessId {
             "codex" => Self::Codex,
             "gemini" => Self::Gemini,
             "agy" => Self::Agy,
-            other => Self::Other(other.to_owned()),
+            other => Self::Other(OpenToken::from_validated(other)),
         })
     }
 
@@ -168,7 +192,7 @@ impl HarnessId {
             Self::Codex => "codex",
             Self::Gemini => "gemini",
             Self::Agy => "agy",
-            Self::Other(token) => token,
+            Self::Other(token) => token.as_str(),
         }
     }
 }
@@ -350,7 +374,7 @@ impl FromStr for SessionRef {
 
 impl<'de> Deserialize<'de> for SessionRef {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let value = Value::deserialize(deserializer)?;
+        let value = object::deserialize_value(deserializer)?;
         Self::from_value(value).map_err(D::Error::custom)
     }
 }
@@ -411,5 +435,24 @@ mod schema_impls {
         fn json_schema(_generator: &mut SchemaGenerator) -> Schema {
             token_schema(&["claude-code", "codex", "gemini", "agy"])
         }
+    }
+}
+
+#[cfg(test)]
+mod open_enum_tests {
+    use super::*;
+
+    #[test]
+    fn try_new_canonicalizes_known_tokens_stuffed_into_other() {
+        let session = SessionRef::try_new(
+            Surface::Other(OpenToken::from_validated("t3")),
+            HarnessId::Other(OpenToken::from_validated("claude-code")),
+            NodeId::parse("n1").unwrap(),
+            "id",
+            Extra::new(),
+        )
+        .unwrap();
+        assert_eq!(session.surface(), &Surface::T3);
+        assert_eq!(session.harness(), &HarnessId::ClaudeCode);
     }
 }

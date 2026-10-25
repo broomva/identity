@@ -317,9 +317,13 @@ fn known_surfaces_harnesses_and_reasons_are_not_other() {
     assert_eq!(Surface::parse("paseo").unwrap(), Surface::Paseo);
     assert_eq!(Surface::parse("t3").unwrap(), Surface::T3);
     assert_eq!(Surface::parse("direct").unwrap(), Surface::Direct);
-    assert_eq!(
+    assert!(matches!(
         Surface::parse("claude-code").unwrap(),
-        Surface::Other("claude-code".to_owned())
+        Surface::Other(_)
+    ));
+    assert_eq!(
+        Surface::parse("claude-code").unwrap().as_str(),
+        "claude-code"
     );
     assert_eq!(
         HarnessId::parse("claude-code").unwrap(),
@@ -328,39 +332,56 @@ fn known_surfaces_harnesses_and_reasons_are_not_other() {
     assert_eq!(HarnessId::parse("codex").unwrap(), HarnessId::Codex);
     assert_eq!(HarnessId::parse("gemini").unwrap(), HarnessId::Gemini);
     assert_eq!(HarnessId::parse("agy").unwrap(), HarnessId::Agy);
-    assert_eq!(
+    assert!(matches!(
         HarnessId::parse("claude").unwrap(),
-        HarnessId::Other("claude".to_owned())
-    );
+        HarnessId::Other(_)
+    ));
+    assert_eq!(HarnessId::parse("claude").unwrap().as_str(), "claude");
     assert_eq!(EndReason::parse("completed").unwrap(), EndReason::Completed);
     assert_eq!(EndReason::parse("revoked").unwrap(), EndReason::Revoked);
     assert_eq!(EndReason::parse("expired").unwrap(), EndReason::Expired);
-    assert_eq!(
+    assert!(matches!(
         EndReason::parse("timeout").unwrap(),
-        EndReason::Other("timeout".to_owned())
-    );
+        EndReason::Other(_)
+    ));
+    assert_eq!(EndReason::parse("timeout").unwrap().as_str(), "timeout");
 }
 
 #[test]
-fn other_spelled_known_tokens_canonicalize() {
-    let session = SessionRef::try_new(
-        Surface::Other("t3".to_owned()),
-        HarnessId::Other("claude-code".to_owned()),
-        tailscale(),
-        "id",
-        Extra::new(),
-    )
-    .unwrap();
-    assert_eq!(session.surface(), &Surface::T3);
-    assert_eq!(session.harness(), &HarnessId::ClaudeCode);
-    let end = SessionEnd::try_new(
-        session,
-        1,
-        EndReason::Other("completed".to_owned()),
-        Extra::new(),
-    )
-    .unwrap();
-    assert_eq!(end.reason(), &EndReason::Completed);
+fn open_enums_round_trip_only_valid_tokens() {
+    let t3 = serde_json::to_string(&Surface::T3).unwrap();
+    assert_eq!(t3, "\"t3\"");
+    assert_eq!(serde_json::from_str::<Surface>(&t3).unwrap(), Surface::T3);
+
+    let custom = Surface::parse("claude-code").unwrap();
+    let wire = serde_json::to_string(&custom).unwrap();
+    assert_eq!(wire, "\"claude-code\"");
+    assert_eq!(serde_json::from_str::<Surface>(&wire).unwrap(), custom);
+
+    let harness = HarnessId::parse("claude").unwrap();
+    let wire = serde_json::to_string(&harness).unwrap();
+    assert_eq!(serde_json::from_str::<HarnessId>(&wire).unwrap(), harness);
+
+    let reason = EndReason::parse("timeout").unwrap();
+    let wire = serde_json::to_string(&reason).unwrap();
+    assert_eq!(serde_json::from_str::<EndReason>(&wire).unwrap(), reason);
+
+    assert_eq!(
+        rule(Surface::parse("bad\nname")),
+        "wire name must be a lowercase token"
+    );
+    assert_contains(
+        serde_json::from_str::<Surface>("\"bad\\nname\"").unwrap_err(),
+        "wire name must be a lowercase token",
+    );
+    assert_contains(
+        serde_json::from_str::<HarnessId>("\"bad\\nname\"").unwrap_err(),
+        "wire name must be a lowercase token",
+    );
+    assert_contains(
+        serde_json::from_str::<EndReason>("\"a--b\"").unwrap_err(),
+        "wire name must be a lowercase token",
+    );
 }
 
 #[test]
@@ -725,6 +746,115 @@ fn missing_and_mistyped_fields_name_the_field() {
     assert_contains(
         serde_json::from_value::<SessionEnd>(json!({"version": 1, "session": serde_json::to_value(session()).unwrap(), "ended_at": 1})).unwrap_err(),
         "missing reason"
+    );
+}
+
+#[test]
+fn deserializing_an_attestation_checks_ttl_and_node() {
+    let mut value = serde_json::to_value(golden()).unwrap();
+    let issued = value["issued_at"].as_i64().unwrap();
+    value["expires_at"] = json!(issued + MAX_TTL_MS + 1);
+    assert_contains(
+        serde_json::from_value::<Attestation>(value).unwrap_err(),
+        "expiry must be at most 1 hour",
+    );
+
+    let mut value = serde_json::to_value(golden()).unwrap();
+    value["node"] = json!("n2");
+    assert_contains(
+        serde_json::from_value::<Attestation>(value).unwrap_err(),
+        "bound node must equal the session node",
+    );
+}
+
+#[test]
+fn deserializing_a_session_key_checks_version_node_and_ttl() {
+    let key = SessionKey::try_new(session(), tailscale(), "key-1", 10, 20, Extra::new()).unwrap();
+    let mut value = serde_json::to_value(&key).unwrap();
+    value["version"] = json!(2);
+    assert_contains(
+        serde_json::from_value::<SessionKey>(value).unwrap_err(),
+        "version must be 1",
+    );
+
+    let mut value = serde_json::to_value(&key).unwrap();
+    value["node"] = json!("n2");
+    assert_contains(
+        serde_json::from_value::<SessionKey>(value).unwrap_err(),
+        "bound node must equal the session node",
+    );
+
+    let mut value = serde_json::to_value(&key).unwrap();
+    value["expires_at"] = json!(10 + MAX_TTL_MS + 1);
+    assert_contains(
+        serde_json::from_value::<SessionKey>(value).unwrap_err(),
+        "expiry must be at most 1 hour",
+    );
+}
+
+#[test]
+fn deserializing_a_session_end_checks_version() {
+    let end = SessionEnd::try_new(session(), 10, EndReason::Completed, Extra::new()).unwrap();
+    let mut value = serde_json::to_value(&end).unwrap();
+    value["version"] = json!(2);
+    assert_contains(
+        serde_json::from_value::<SessionEnd>(value).unwrap_err(),
+        "version must be 1",
+    );
+}
+
+#[test]
+fn duplicate_json_keys_are_rejected() {
+    assert_contains(
+        serde_json::from_str::<Principal>(r#"{"kind":"unverified","kind":"owner"}"#).unwrap_err(),
+        "duplicate key",
+    );
+    assert_contains(
+        serde_json::from_str::<SessionRef>(
+            r#"{"surface":"t3","harness":"codex","node":"n1","node":"n2","id":"s1"}"#,
+        )
+        .unwrap_err(),
+        "duplicate key",
+    );
+    assert_contains(
+        serde_json::from_str::<Principal>(
+            r#"{"kind":"agent","session":{"surface":"t3","harness":"codex","node":"n1","id":"s1","id":"s2"}}"#,
+        )
+        .unwrap_err(),
+        "duplicate key",
+    );
+}
+
+#[test]
+fn session_end_canonical_bytes_cover_both_extras() {
+    let end = SessionEnd::try_new(
+        session_parts(
+            "t3",
+            "claude-code",
+            "nwPbDUaNzo11CNTRL",
+            "6ff25f7c",
+            note("from-session"),
+        ),
+        9,
+        EndReason::Completed,
+        note("why"),
+    )
+    .unwrap();
+    let text = String::from_utf8(end.canonical_bytes()).unwrap();
+    assert_eq!(
+        text,
+        "\
+identity.session_end.v1
+version=1
+surface=t3
+harness=claude-code
+node=nwPbDUaNzo11CNTRL
+session=6ff25f7c
+ended_at=9
+reason=completed
+extra={\"note\":\"why\"}
+session_extra={\"note\":\"from-session\"}
+"
     );
 }
 

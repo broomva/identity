@@ -1,0 +1,6 @@
+{
+  "kind": "NodeId",
+  "rust_error": "node id must be ASCII alphanumeric",
+  "schema": "reject",
+  "value": "n-1"
+}

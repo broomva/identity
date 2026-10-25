@@ -1,0 +1,12 @@
+{
+  "kind": "Principal",
+  "value": {
+    "kind": "agent",
+    "session": {
+      "surface": "t3",
+      "harness": "codex",
+      "node": "n1",
+      "id": "s1"
+    }
+  }
+}

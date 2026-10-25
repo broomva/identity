@@ -1,0 +1,21 @@
+{
+  "kind": "Attestation",
+  "rust_error": "issued_at must be an integer",
+  "schema": "accept",
+  "inexpressible": "integral JSON numbers compare equal",
+  "value": {
+    "version": 1,
+    "session": {
+      "surface": "t3",
+      "harness": "codex",
+      "node": "n1",
+      "id": "s1"
+    },
+    "node": "n1",
+    "scope": [
+      "read"
+    ],
+    "issued_at": 1.0,
+    "expires_at": 2
+  }
+}

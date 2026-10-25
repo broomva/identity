@@ -9,7 +9,7 @@ repository = "https://github.com/broomva/identity"
 readme = "README.md"
 keywords = ["identity", "serde"]
 categories = ["data-structures", "encoding"]
-include = ["/src", "/examples", "/schema", "/docs", "/README.md", "/LICENSE"]
+include = ["/src", "/examples", "/schema", "/docs", "/bindings", "/README.md", "/LICENSE"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }

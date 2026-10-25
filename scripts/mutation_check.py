@@ -4,6 +4,7 @@
 import os
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -152,16 +153,98 @@ MUTANTS = [
     ("src/principal.rs", '"runner_job" => Self::RunnerJob,', ""),
     ("src/principal.rs", '"service" => Self::Service,', ""),
     ("src/principal.rs", '"unverified" => Self::Unverified,', ""),
+    (
+        "src/attestation.rs",
+        "        check::require_ttl(issued_at, expires_at)?;\n",
+        "",
+        1,
+    ),
+    (
+        "src/attestation.rs",
+        "        check::require_ttl(issued_at, expires_at)?;\n",
+        "",
+        3,
+    ),
+    (
+        "src/attestation.rs",
+        "        check::require_same_node(session.node(), &node)?;\n",
+        "",
+        1,
+    ),
+    (
+        "src/attestation.rs",
+        "        check::require_same_node(session.node(), &node)?;\n",
+        "",
+        3,
+    ),
+    (
+        "src/attestation.rs",
+        'let version = check::require_version_field(object.remove("version"))?;',
+        'let version = crate::CONTRACT_VERSION;\n        object.remove("version");',
+        1,
+    ),
+    (
+        "src/attestation.rs",
+        'let version = check::require_version_field(object.remove("version"))?;',
+        'let version = crate::CONTRACT_VERSION;\n        object.remove("version");',
+        2,
+    ),
+    (
+        "src/session.rs",
+        "let surface = Surface::parse(surface.as_str())?;",
+        "let surface = surface;",
+    ),
+    (
+        "src/session.rs",
+        "let harness = HarnessId::parse(harness.as_str())?;",
+        "let harness = harness;",
+    ),
+    (
+        "src/attestation.rs",
+        "let reason = EndReason::parse(reason.as_str())?;",
+        "let reason = reason;",
+    ),
+    ("src/object.rs", "if map.contains_key(&key) {", "if false {"),
+    (
+        "src/canonical.rs",
+        "buf.push_str(&canonical_object(end.extra()));",
+        'buf.push_str("{}");',
+    ),
+    (
+        "src/canonical.rs",
+        "buf.push_str(&canonical_object(end.session().extra()));",
+        'buf.push_str("{}");',
+    ),
 ] + rust_escapes()
+
+
+def spec(item):
+    if len(item) == 4:
+        return item
+    path, old, new = item
+    return path, old, new, 0
+
+
+def replace_nth(text, old, new, index):
+    parts = text.split(old)
+    if len(parts) - 1 <= index:
+        return None
+    return old.join(parts[: index + 1]) + new + old.join(parts[index + 1 :])
 
 
 def check_anchors(root: pathlib.Path) -> int:
     failed = 0
-    for path, old, _new in MUTANTS:
+    for item in MUTANTS:
+        path, old, _new, index = spec(item)
         text = (root / path).read_text()
         count = text.count(old)
-        if count != 1:
-            print(f"ANCHOR {count}  {path}: {old!r}")
+        higher = any(
+            spec(other)[0] == path and spec(other)[1] == old and spec(other)[3] > index
+            for other in MUTANTS
+        )
+        ok = count > index if index or higher else count == 1
+        if not ok:
+            print(f"ANCHOR {count} index {index}  {path}: {old!r}")
             failed = 1
     print(f"anchors  {len(MUTANTS)}")
     return failed
@@ -219,6 +302,11 @@ def main() -> int:
         check=True,
     )
     log = copy / "log"
+    bun = shutil.which("bun") or str(pathlib.Path.home() / ".bun" / "bin" / "bun")
+    if run([bun, "install", "--frozen-lockfile"], copy / "bindings" / "typescript", log, env) != 0:
+        print("bun install failed in the mutation copy")
+        sys.stdout.write(log.read_text(errors="replace"))
+        return 2
     test_cmd = ["timeout", LIMIT, "cargo", "test", "-q", "--workspace", "--locked"]
     if run(test_cmd, copy, log, env) != 0:
         print("baseline is red: fix the suite before reading any mutant verdict")
@@ -227,30 +315,37 @@ def main() -> int:
     print("baseline  green")
     failed = 0
     killed = 0
-    for path, old, new in MUTANTS:
+    for item in MUTANTS:
+        path, old, new, index = spec(item)
         subprocess.run(["git", "checkout", "-q", "--", "."], cwd=copy, check=True)
-        subprocess.run(["git", "clean", "-qfdx", "-e", "log", "-e", ".target"], cwd=copy, check=True)
+        subprocess.run(
+            ["git", "clean", "-qfdx", "-e", "log", "-e", ".target", "-e", "bindings/typescript/node_modules"],
+            cwd=copy,
+            check=True,
+        )
         file = copy / path
         text = file.read_text()
-        if text.count(old) != 1:
-            print(f"ANCHOR MISSING  {path}: {old!r}")
+        updated = replace_nth(text, old, new, index)
+        if updated is None:
+            print(f"ANCHOR MISSING  {path} index {index}: {old!r}")
             failed = 1
             continue
-        file.write_text(text.replace(old, new, 1))
+        file.write_text(updated)
         code = run(test_cmd, copy, log, env)
         body = log.read_text(errors="replace")
         caught = failing_test(log)
+        label = f"{path} index {index}: {old!r}"
         if code == 0:
-            print(f"SURVIVED  {path}: {old!r}")
+            print(f"SURVIVED  {label}")
             failed = 1
         elif re.search(r"^error\[E[0-9]+\]|could not compile|failed to select a version", body, re.M):
-            print(f"NO BUILD  {path}: {old!r}")
+            print(f"NO BUILD  {label}")
             failed = 1
         elif code != 124 and caught and "test result: FAILED" in body:
-            print(f"killed    {path}: {old!r}  [{caught}]")
+            print(f"killed    {label}  [{caught}]")
             killed += 1
         else:
-            print(f"UNCLEAR   {path}: {old!r} (exit {code})")
+            print(f"UNCLEAR   {label} (exit {code})")
             print("\n".join(body.splitlines()[-8:]))
             failed = 1
     print(f"mutation  {killed}/{len(MUTANTS)} killed")

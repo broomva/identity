@@ -1,0 +1,11 @@
+{
+  "kind": "SessionRef",
+  "rust_error": "id must not contain whitespace or controls",
+  "schema": "reject",
+  "value": {
+    "surface": "t3",
+    "harness": "codex",
+    "node": "n1",
+    "id": "a b"
+  }
+}

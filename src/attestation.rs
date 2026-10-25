@@ -10,7 +10,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use crate::canonical;
 use crate::check::{self, IdentityError};
 use crate::object;
-use crate::session::{NodeId, SessionRef};
+use crate::session::{NodeId, OpenToken, SessionRef};
 use crate::{CONTRACT_VERSION, Extra, Value};
 
 /// Why a session ended. Unknown wire tokens stay [`EndReason::Other`].
@@ -23,7 +23,9 @@ pub enum EndReason {
     /// The expiry passed.
     Expired,
     /// A wire token this crate does not name.
-    Other(String),
+    ///
+    /// Build one with [`EndReason::parse`]. A known token is never stored here.
+    Other(OpenToken),
 }
 
 impl EndReason {
@@ -38,7 +40,7 @@ impl EndReason {
             "completed" => Self::Completed,
             "revoked" => Self::Revoked,
             "expired" => Self::Expired,
-            other => Self::Other(other.to_owned()),
+            other => Self::Other(OpenToken::from_validated(other)),
         })
     }
 
@@ -48,7 +50,7 @@ impl EndReason {
             Self::Completed => "completed",
             Self::Revoked => "revoked",
             Self::Expired => "expired",
-            Self::Other(token) => token,
+            Self::Other(token) => token.as_str(),
         }
     }
 }
@@ -229,7 +231,7 @@ impl Attestation {
 
 impl<'de> Deserialize<'de> for Attestation {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let value = Value::deserialize(deserializer)?;
+        let value = object::deserialize_value(deserializer)?;
         Self::from_value(value).map_err(D::Error::custom)
     }
 }
@@ -358,7 +360,7 @@ impl SessionKey {
 
 impl<'de> Deserialize<'de> for SessionKey {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let value = Value::deserialize(deserializer)?;
+        let value = object::deserialize_value(deserializer)?;
         Self::from_value(value).map_err(D::Error::custom)
     }
 }
@@ -450,11 +452,19 @@ impl SessionEnd {
     pub fn extra(&self) -> &Extra {
         &self.extra
     }
+
+    /// The bytes a later verifier signs for a session end. UTF-8, one field per line.
+    ///
+    /// The domain line is `identity.session_end.v1`. This is not a signature.
+    /// Auth can read it with the same line rules as an attestation.
+    pub fn canonical_bytes(&self) -> Vec<u8> {
+        canonical::session_end_bytes(self)
+    }
 }
 
 impl<'de> Deserialize<'de> for SessionEnd {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let value = Value::deserialize(deserializer)?;
+        let value = object::deserialize_value(deserializer)?;
         Self::from_value(value).map_err(D::Error::custom)
     }
 }
@@ -518,5 +528,32 @@ impl schemars::JsonSchema for EndReason {
             ],
             "description": "A lowercase wire token. The crate also rejects a doubled hyphen."
         })
+    }
+}
+
+#[cfg(test)]
+mod open_enum_tests {
+    use super::*;
+    use crate::Extra;
+    use crate::session::HarnessId;
+
+    #[test]
+    fn try_new_canonicalizes_a_known_reason_stuffed_into_other() {
+        let session = SessionRef::try_new(
+            crate::session::Surface::parse("t3").unwrap(),
+            HarnessId::parse("codex").unwrap(),
+            NodeId::parse("n1").unwrap(),
+            "id",
+            Extra::new(),
+        )
+        .unwrap();
+        let end = SessionEnd::try_new(
+            session,
+            1,
+            EndReason::Other(OpenToken::from_validated("completed")),
+            Extra::new(),
+        )
+        .unwrap();
+        assert_eq!(end.reason(), &EndReason::Completed);
     }
 }

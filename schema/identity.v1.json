@@ -4,13 +4,33 @@
       "$defs": {
         "NodeId": {
           "description": "Tailscale stable node id. One to sixty-four ASCII alphanumeric bytes.",
+          "maxLength": 64,
+          "minLength": 1,
+          "not": {
+            "pattern": "\\n"
+          },
+          "pattern": "^[A-Za-z0-9]{1,64}$",
           "type": "string"
         },
         "SessionRef": {
-          "additionalProperties": true,
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue1"
+          },
           "description": "One running session: surface, harness, node and a surface-local id.\n\nThe display form is `{surface}:{harness}@{node}/{id}`. It does not carry unknown keys. JSON does.",
           "properties": {
             "harness": {
+              "allOf": [
+                {
+                  "not": {
+                    "pattern": "--"
+                  }
+                },
+                {
+                  "not": {
+                    "pattern": "\\n"
+                  }
+                }
+              ],
               "anyOf": [
                 {
                   "enum": [
@@ -31,12 +51,31 @@
               "type": "string"
             },
             "id": {
+              "description": "One to 256 characters, with no whitespace or controls. maxLength counts Unicode code points. The crate counts bytes.",
+              "maxLength": 256,
+              "minLength": 1,
+              "not": {
+                "pattern": "\\n"
+              },
+              "pattern": "^[^\\s\\u0000-\\u001F\\u007F-\\u009F]+$",
               "type": "string"
             },
             "node": {
               "$ref": "#/$defs/NodeId"
             },
             "surface": {
+              "allOf": [
+                {
+                  "not": {
+                    "pattern": "--"
+                  }
+                },
+                {
+                  "not": {
+                    "pattern": "\\n"
+                  }
+                }
+              ],
               "anyOf": [
                 {
                   "enum": [
@@ -66,15 +105,19 @@
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "additionalProperties": true,
+      "additionalProperties": {
+        "$ref": "#/$defs/ExtraValue1"
+      },
       "description": "A claim that a session may act within a scope on a node until it expires.\n\nThe lifetime is greater than zero and at most one hour. Renewal is a new value.\nThe bound node equals the session node.",
       "properties": {
         "expires_at": {
-          "format": "int64",
+          "maximum": 9223372036854775807,
+          "minimum": -9223372036854775808,
           "type": "integer"
         },
         "issued_at": {
-          "format": "int64",
+          "maximum": 9223372036854775807,
+          "minimum": -9223372036854775808,
           "type": "integer"
         },
         "node": {
@@ -82,16 +125,31 @@
         },
         "scope": {
           "items": {
+            "allOf": [
+              {
+                "not": {
+                  "pattern": "\\.\\."
+                }
+              },
+              {
+                "not": {
+                  "pattern": "\\n"
+                }
+              }
+            ],
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$",
             "type": "string"
           },
-          "type": "array"
+          "type": "array",
+          "uniqueItems": true
         },
         "session": {
           "$ref": "#/$defs/SessionRef"
         },
         "version": {
-          "format": "uint32",
-          "minimum": 0,
+          "const": 1,
           "type": "integer"
         }
       },
@@ -108,6 +166,18 @@
     },
     "EndReason": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "allOf": [
+        {
+          "not": {
+            "pattern": "--"
+          }
+        },
+        {
+          "not": {
+            "pattern": "\\n"
+          }
+        }
+      ],
       "anyOf": [
         {
           "enum": [
@@ -127,8 +197,981 @@
       "title": "EndReason",
       "type": "string"
     },
+    "ExtraValue1": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "maximum": 18446744073709551615,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        {
+          "items": {
+            "$ref": "#/$defs/ExtraValue2"
+          },
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue2"
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ExtraValue10": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "maximum": 18446744073709551615,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        {
+          "items": {
+            "$ref": "#/$defs/ExtraValue11"
+          },
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue11"
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ExtraValue11": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "maximum": 18446744073709551615,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        {
+          "items": {
+            "$ref": "#/$defs/ExtraValue12"
+          },
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue12"
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ExtraValue12": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "maximum": 18446744073709551615,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        {
+          "items": {
+            "$ref": "#/$defs/ExtraValue13"
+          },
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue13"
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ExtraValue13": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "maximum": 18446744073709551615,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        {
+          "items": {
+            "$ref": "#/$defs/ExtraValue14"
+          },
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue14"
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ExtraValue14": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "maximum": 18446744073709551615,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        {
+          "items": {
+            "$ref": "#/$defs/ExtraValue15"
+          },
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue15"
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ExtraValue15": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "maximum": 18446744073709551615,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        {
+          "items": {
+            "$ref": "#/$defs/ExtraValue16"
+          },
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue16"
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ExtraValue16": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "maximum": 18446744073709551615,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        {
+          "items": {
+            "$ref": "#/$defs/ExtraValue17"
+          },
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue17"
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ExtraValue17": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "maximum": 18446744073709551615,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        {
+          "items": {
+            "$ref": "#/$defs/ExtraValue18"
+          },
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue18"
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ExtraValue18": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "maximum": 18446744073709551615,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        {
+          "items": {
+            "$ref": "#/$defs/ExtraValue19"
+          },
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue19"
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ExtraValue19": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "maximum": 18446744073709551615,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        {
+          "items": {
+            "$ref": "#/$defs/ExtraValue20"
+          },
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue20"
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ExtraValue2": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "maximum": 18446744073709551615,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        {
+          "items": {
+            "$ref": "#/$defs/ExtraValue3"
+          },
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue3"
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ExtraValue20": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "maximum": 18446744073709551615,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        {
+          "items": {
+            "$ref": "#/$defs/ExtraValue21"
+          },
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue21"
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ExtraValue21": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "maximum": 18446744073709551615,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        {
+          "items": {
+            "$ref": "#/$defs/ExtraValue22"
+          },
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue22"
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ExtraValue22": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "maximum": 18446744073709551615,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        {
+          "items": {
+            "$ref": "#/$defs/ExtraValue23"
+          },
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue23"
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ExtraValue23": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "maximum": 18446744073709551615,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        {
+          "items": {
+            "$ref": "#/$defs/ExtraValue24"
+          },
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue24"
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ExtraValue24": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "maximum": 18446744073709551615,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        {
+          "items": {
+            "$ref": "#/$defs/ExtraValue25"
+          },
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue25"
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ExtraValue25": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "maximum": 18446744073709551615,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        {
+          "items": {
+            "$ref": "#/$defs/ExtraValue26"
+          },
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue26"
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ExtraValue26": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "maximum": 18446744073709551615,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        {
+          "items": {
+            "$ref": "#/$defs/ExtraValue27"
+          },
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue27"
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ExtraValue27": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "maximum": 18446744073709551615,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        {
+          "items": {
+            "$ref": "#/$defs/ExtraValue28"
+          },
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue28"
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ExtraValue28": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "maximum": 18446744073709551615,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        {
+          "items": {
+            "$ref": "#/$defs/ExtraValue29"
+          },
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue29"
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ExtraValue29": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "maximum": 18446744073709551615,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        {
+          "items": {
+            "$ref": "#/$defs/ExtraValue30"
+          },
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue30"
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ExtraValue3": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "maximum": 18446744073709551615,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        {
+          "items": {
+            "$ref": "#/$defs/ExtraValue4"
+          },
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue4"
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ExtraValue30": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "maximum": 18446744073709551615,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        {
+          "items": {
+            "$ref": "#/$defs/ExtraValue31"
+          },
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue31"
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ExtraValue31": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "maximum": 18446744073709551615,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        {
+          "items": {
+            "$ref": "#/$defs/ExtraValue32"
+          },
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue32"
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ExtraValue32": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "maximum": 18446744073709551615,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        {
+          "items": {
+            "$ref": "#/$defs/ExtraValue33"
+          },
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue33"
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ExtraValue33": false,
+    "ExtraValue4": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "maximum": 18446744073709551615,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        {
+          "items": {
+            "$ref": "#/$defs/ExtraValue5"
+          },
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue5"
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ExtraValue5": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "maximum": 18446744073709551615,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        {
+          "items": {
+            "$ref": "#/$defs/ExtraValue6"
+          },
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue6"
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ExtraValue6": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "maximum": 18446744073709551615,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        {
+          "items": {
+            "$ref": "#/$defs/ExtraValue7"
+          },
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue7"
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ExtraValue7": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "maximum": 18446744073709551615,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        {
+          "items": {
+            "$ref": "#/$defs/ExtraValue8"
+          },
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue8"
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ExtraValue8": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "maximum": 18446744073709551615,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        {
+          "items": {
+            "$ref": "#/$defs/ExtraValue9"
+          },
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue9"
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ExtraValue9": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "maximum": 18446744073709551615,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        {
+          "items": {
+            "$ref": "#/$defs/ExtraValue10"
+          },
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue10"
+          },
+          "type": "object"
+        }
+      ]
+    },
     "HarnessId": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "allOf": [
+        {
+          "not": {
+            "pattern": "--"
+          }
+        },
+        {
+          "not": {
+            "pattern": "\\n"
+          }
+        }
+      ],
       "anyOf": [
         {
           "enum": [
@@ -150,8 +1193,13 @@
       "type": "string"
     },
     "NodeId": {
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "description": "Tailscale stable node id. One to sixty-four ASCII alphanumeric bytes.",
+      "maxLength": 64,
+      "minLength": 1,
+      "not": {
+        "pattern": "\\n"
+      },
+      "pattern": "^[A-Za-z0-9]{1,64}$",
       "title": "NodeId",
       "type": "string"
     },
@@ -159,13 +1207,33 @@
       "$defs": {
         "NodeId": {
           "description": "Tailscale stable node id. One to sixty-four ASCII alphanumeric bytes.",
+          "maxLength": 64,
+          "minLength": 1,
+          "not": {
+            "pattern": "\\n"
+          },
+          "pattern": "^[A-Za-z0-9]{1,64}$",
           "type": "string"
         },
         "SessionRef": {
-          "additionalProperties": true,
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue1"
+          },
           "description": "One running session: surface, harness, node and a surface-local id.\n\nThe display form is `{surface}:{harness}@{node}/{id}`. It does not carry unknown keys. JSON does.",
           "properties": {
             "harness": {
+              "allOf": [
+                {
+                  "not": {
+                    "pattern": "--"
+                  }
+                },
+                {
+                  "not": {
+                    "pattern": "\\n"
+                  }
+                }
+              ],
               "anyOf": [
                 {
                   "enum": [
@@ -186,12 +1254,31 @@
               "type": "string"
             },
             "id": {
+              "description": "One to 256 characters, with no whitespace or controls. maxLength counts Unicode code points. The crate counts bytes.",
+              "maxLength": 256,
+              "minLength": 1,
+              "not": {
+                "pattern": "\\n"
+              },
+              "pattern": "^[^\\s\\u0000-\\u001F\\u007F-\\u009F]+$",
               "type": "string"
             },
             "node": {
               "$ref": "#/$defs/NodeId"
             },
             "surface": {
+              "allOf": [
+                {
+                  "not": {
+                    "pattern": "--"
+                  }
+                },
+                {
+                  "not": {
+                    "pattern": "\\n"
+                  }
+                }
+              ],
               "anyOf": [
                 {
                   "enum": [
@@ -222,9 +1309,21 @@
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "description": "Who is calling. Six closed kinds: owner, owner_device, agent, runner_job, service, unverified. The kind field is not proof.",
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "unverified"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
       "oneOf": [
         {
-          "additionalProperties": true,
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue1"
+          },
           "properties": {
             "kind": {
               "const": "owner",
@@ -237,7 +1336,9 @@
           "type": "object"
         },
         {
-          "additionalProperties": true,
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue1"
+          },
           "properties": {
             "kind": {
               "const": "owner_device",
@@ -254,7 +1355,9 @@
           "type": "object"
         },
         {
-          "additionalProperties": true,
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue1"
+          },
           "properties": {
             "kind": {
               "const": "agent",
@@ -271,9 +1374,18 @@
           "type": "object"
         },
         {
-          "additionalProperties": true,
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue1"
+          },
           "properties": {
             "id": {
+              "description": "One to 256 characters, with no whitespace or controls. maxLength counts Unicode code points. The crate counts bytes.",
+              "maxLength": 256,
+              "minLength": 1,
+              "not": {
+                "pattern": "\\n"
+              },
+              "pattern": "^[^\\s\\u0000-\\u001F\\u007F-\\u009F]+$",
               "type": "string"
             },
             "kind": {
@@ -292,13 +1404,31 @@
           "type": "object"
         },
         {
-          "additionalProperties": true,
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue1"
+          },
           "properties": {
             "kind": {
               "const": "service",
               "type": "string"
             },
             "name": {
+              "allOf": [
+                {
+                  "not": {
+                    "pattern": "--"
+                  }
+                },
+                {
+                  "not": {
+                    "pattern": "\\n"
+                  }
+                }
+              ],
+              "description": "A lowercase wire token. A doubled hyphen is rejected.",
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[a-z0-9][a-z0-9-]*$",
               "type": "string"
             }
           },
@@ -309,12 +1439,15 @@
           "type": "object"
         },
         {
-          "additionalProperties": true,
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue1"
+          },
           "properties": {
             "kind": {
               "const": "unverified",
               "type": "string"
-            }
+            },
+            "session": false
           },
           "required": [
             "kind"
@@ -322,19 +1455,44 @@
           "type": "object"
         }
       ],
+      "then": {
+        "properties": {
+          "session": false
+        }
+      },
       "title": "Principal"
     },
     "SessionEnd": {
       "$defs": {
         "NodeId": {
           "description": "Tailscale stable node id. One to sixty-four ASCII alphanumeric bytes.",
+          "maxLength": 64,
+          "minLength": 1,
+          "not": {
+            "pattern": "\\n"
+          },
+          "pattern": "^[A-Za-z0-9]{1,64}$",
           "type": "string"
         },
         "SessionRef": {
-          "additionalProperties": true,
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue1"
+          },
           "description": "One running session: surface, harness, node and a surface-local id.\n\nThe display form is `{surface}:{harness}@{node}/{id}`. It does not carry unknown keys. JSON does.",
           "properties": {
             "harness": {
+              "allOf": [
+                {
+                  "not": {
+                    "pattern": "--"
+                  }
+                },
+                {
+                  "not": {
+                    "pattern": "\\n"
+                  }
+                }
+              ],
               "anyOf": [
                 {
                   "enum": [
@@ -355,12 +1513,31 @@
               "type": "string"
             },
             "id": {
+              "description": "One to 256 characters, with no whitespace or controls. maxLength counts Unicode code points. The crate counts bytes.",
+              "maxLength": 256,
+              "minLength": 1,
+              "not": {
+                "pattern": "\\n"
+              },
+              "pattern": "^[^\\s\\u0000-\\u001F\\u007F-\\u009F]+$",
               "type": "string"
             },
             "node": {
               "$ref": "#/$defs/NodeId"
             },
             "surface": {
+              "allOf": [
+                {
+                  "not": {
+                    "pattern": "--"
+                  }
+                },
+                {
+                  "not": {
+                    "pattern": "\\n"
+                  }
+                }
+              ],
               "anyOf": [
                 {
                   "enum": [
@@ -390,14 +1567,29 @@
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "additionalProperties": true,
+      "additionalProperties": {
+        "$ref": "#/$defs/ExtraValue1"
+      },
       "description": "A session has ended. This is a record, not a signature.",
       "properties": {
         "ended_at": {
-          "format": "int64",
+          "maximum": 9223372036854775807,
+          "minimum": -9223372036854775808,
           "type": "integer"
         },
         "reason": {
+          "allOf": [
+            {
+              "not": {
+                "pattern": "--"
+              }
+            },
+            {
+              "not": {
+                "pattern": "\\n"
+              }
+            }
+          ],
           "anyOf": [
             {
               "enum": [
@@ -420,8 +1612,7 @@
           "$ref": "#/$defs/SessionRef"
         },
         "version": {
-          "format": "uint32",
-          "minimum": 0,
+          "const": 1,
           "type": "integer"
         }
       },
@@ -438,13 +1629,33 @@
       "$defs": {
         "NodeId": {
           "description": "Tailscale stable node id. One to sixty-four ASCII alphanumeric bytes.",
+          "maxLength": 64,
+          "minLength": 1,
+          "not": {
+            "pattern": "\\n"
+          },
+          "pattern": "^[A-Za-z0-9]{1,64}$",
           "type": "string"
         },
         "SessionRef": {
-          "additionalProperties": true,
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtraValue1"
+          },
           "description": "One running session: surface, harness, node and a surface-local id.\n\nThe display form is `{surface}:{harness}@{node}/{id}`. It does not carry unknown keys. JSON does.",
           "properties": {
             "harness": {
+              "allOf": [
+                {
+                  "not": {
+                    "pattern": "--"
+                  }
+                },
+                {
+                  "not": {
+                    "pattern": "\\n"
+                  }
+                }
+              ],
               "anyOf": [
                 {
                   "enum": [
@@ -465,12 +1676,31 @@
               "type": "string"
             },
             "id": {
+              "description": "One to 256 characters, with no whitespace or controls. maxLength counts Unicode code points. The crate counts bytes.",
+              "maxLength": 256,
+              "minLength": 1,
+              "not": {
+                "pattern": "\\n"
+              },
+              "pattern": "^[^\\s\\u0000-\\u001F\\u007F-\\u009F]+$",
               "type": "string"
             },
             "node": {
               "$ref": "#/$defs/NodeId"
             },
             "surface": {
+              "allOf": [
+                {
+                  "not": {
+                    "pattern": "--"
+                  }
+                },
+                {
+                  "not": {
+                    "pattern": "\\n"
+                  }
+                }
+              ],
               "anyOf": [
                 {
                   "enum": [
@@ -500,18 +1730,29 @@
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "additionalProperties": true,
+      "additionalProperties": {
+        "$ref": "#/$defs/ExtraValue1"
+      },
       "description": "The public half of a node-bound session key. The secret never enters this type.\n\nThe lifetime rule is the same one-hour rule as an attestation.",
       "properties": {
         "expires_at": {
-          "format": "int64",
+          "maximum": 9223372036854775807,
+          "minimum": -9223372036854775808,
           "type": "integer"
         },
         "issued_at": {
-          "format": "int64",
+          "maximum": 9223372036854775807,
+          "minimum": -9223372036854775808,
           "type": "integer"
         },
         "key_id": {
+          "description": "One to 256 characters, with no whitespace or controls. maxLength counts Unicode code points. The crate counts bytes.",
+          "maxLength": 256,
+          "minLength": 1,
+          "not": {
+            "pattern": "\\n"
+          },
+          "pattern": "^[^\\s\\u0000-\\u001F\\u007F-\\u009F]+$",
           "type": "string"
         },
         "node": {
@@ -521,8 +1762,7 @@
           "$ref": "#/$defs/SessionRef"
         },
         "version": {
-          "format": "uint32",
-          "minimum": 0,
+          "const": 1,
           "type": "integer"
         }
       },
@@ -541,14 +1781,34 @@
       "$defs": {
         "NodeId": {
           "description": "Tailscale stable node id. One to sixty-four ASCII alphanumeric bytes.",
+          "maxLength": 64,
+          "minLength": 1,
+          "not": {
+            "pattern": "\\n"
+          },
+          "pattern": "^[A-Za-z0-9]{1,64}$",
           "type": "string"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "additionalProperties": true,
+      "additionalProperties": {
+        "$ref": "#/$defs/ExtraValue1"
+      },
       "description": "One running session: surface, harness, node and a surface-local id.\n\nThe display form is `{surface}:{harness}@{node}/{id}`. It does not carry unknown keys. JSON does.",
       "properties": {
         "harness": {
+          "allOf": [
+            {
+              "not": {
+                "pattern": "--"
+              }
+            },
+            {
+              "not": {
+                "pattern": "\\n"
+              }
+            }
+          ],
           "anyOf": [
             {
               "enum": [
@@ -569,12 +1829,31 @@
           "type": "string"
         },
         "id": {
+          "description": "One to 256 characters, with no whitespace or controls. maxLength counts Unicode code points. The crate counts bytes.",
+          "maxLength": 256,
+          "minLength": 1,
+          "not": {
+            "pattern": "\\n"
+          },
+          "pattern": "^[^\\s\\u0000-\\u001F\\u007F-\\u009F]+$",
           "type": "string"
         },
         "node": {
           "$ref": "#/$defs/NodeId"
         },
         "surface": {
+          "allOf": [
+            {
+              "not": {
+                "pattern": "--"
+              }
+            },
+            {
+              "not": {
+                "pattern": "\\n"
+              }
+            }
+          ],
           "anyOf": [
             {
               "enum": [
@@ -605,6 +1884,18 @@
     },
     "Surface": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "allOf": [
+        {
+          "not": {
+            "pattern": "--"
+          }
+        },
+        {
+          "not": {
+            "pattern": "\\n"
+          }
+        }
+      ],
       "anyOf": [
         {
           "enum": [
@@ -627,7 +1918,7 @@
   },
   "$id": "https://github.com/broomva/identity/blob/v0.1.0/schema/identity.v1.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "description": "Wire contract version 1. The crate refuses any other version, a node id that is not 1-64 ASCII alphanumeric bytes, an attestation or session key whose lifetime exceeds one hour, and a non-integer number. Unknown keys are preserved.",
+  "description": "Wire contract version 1. A version field must be the integer 1. Node ids are 1-64 ASCII alphanumeric characters. Wire tokens are lowercase and reject a doubled hyphen. Opaque ids are 1-256 code points without whitespace or controls. Scope tokens are unique. Extra values are integers in the i64 or u64 range and nest at most 32 levels. An unverified principal has no session. Node equality, lifetime arithmetic, byte length, duplicate keys, and the spelling of an integral number are not expressible here.",
   "title": "identity.v1",
   "version": 1
 }

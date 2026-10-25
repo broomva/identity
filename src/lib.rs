@@ -27,13 +27,15 @@ mod canonical;
 mod check;
 mod object;
 mod principal;
+#[cfg(test)]
+mod schema_tighten;
 mod session;
 
 pub use attestation::{Attestation, EndReason, SessionEnd, SessionKey};
 pub use check::IdentityError;
 pub use principal::{Principal, PrincipalKind};
 pub use serde_json::Value;
-pub use session::{HarnessId, NodeId, SessionRef, Surface};
+pub use session::{HarnessId, NodeId, OpenToken, SessionRef, Surface};
 
 /// Unknown keys kept on a record, in sorted order.
 pub type Extra = serde_json::Map<String, Value>;
@@ -75,14 +77,15 @@ mod schema_tests {
             "HarnessId": schema_for!(HarnessId),
             "EndReason": schema_for!(EndReason),
         });
-        serde_json::json!({
+        let document = serde_json::json!({
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": "https://github.com/broomva/identity/blob/v0.1.0/schema/identity.v1.json",
             "title": "identity.v1",
-            "description": "Wire contract version 1. The crate refuses any other version, a node id that is not 1-64 ASCII alphanumeric bytes, an attestation or session key whose lifetime exceeds one hour, and a non-integer number. Unknown keys are preserved.",
+            "description": "Wire contract version 1. A version field must be the integer 1. Node ids are 1-64 ASCII alphanumeric characters. Wire tokens are lowercase and reject a doubled hyphen. Opaque ids are 1-256 code points without whitespace or controls. Scope tokens are unique. Extra values are integers in the i64 or u64 range and nest at most 32 levels. An unverified principal has no session. Node equality, lifetime arithmetic, byte length, duplicate keys, and the spelling of an integral number are not expressible here.",
             "version": CONTRACT_VERSION,
             "$defs": defs,
-        })
+        });
+        schema_tighten::finish(document)
     }
 
     #[test]

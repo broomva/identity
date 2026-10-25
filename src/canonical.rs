@@ -2,7 +2,7 @@
 
 use crate::Extra;
 use crate::Value;
-use crate::attestation::Attestation;
+use crate::attestation::{Attestation, SessionEnd};
 
 pub(crate) fn attestation_bytes(attestation: &Attestation) -> Vec<u8> {
     let session = attestation.session();
@@ -28,6 +28,26 @@ pub(crate) fn attestation_bytes(attestation: &Attestation) -> Vec<u8> {
     buf.push('\n');
     buf.push_str("session_extra=");
     buf.push_str(&canonical_object(session.extra()));
+    buf.push('\n');
+    buf.into_bytes()
+}
+
+pub(crate) fn session_end_bytes(end: &SessionEnd) -> Vec<u8> {
+    let session = end.session();
+    let mut buf = String::new();
+    push_line(&mut buf, "identity.session_end.v1");
+    push_line(&mut buf, &format!("version={}", end.version()));
+    push_line(&mut buf, &format!("surface={}", session.surface().as_str()));
+    push_line(&mut buf, &format!("harness={}", session.harness().as_str()));
+    push_line(&mut buf, &format!("node={}", session.node().as_str()));
+    push_line(&mut buf, &format!("session={}", session.id()));
+    push_line(&mut buf, &format!("ended_at={}", end.ended_at()));
+    push_line(&mut buf, &format!("reason={}", end.reason().as_str()));
+    buf.push_str("extra=");
+    buf.push_str(&canonical_object(end.extra()));
+    buf.push('\n');
+    buf.push_str("session_extra=");
+    buf.push_str(&canonical_object(end.session().extra()));
     buf.push('\n');
     buf.into_bytes()
 }

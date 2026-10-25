@@ -1,0 +1,7 @@
+{
+  "kind": "Principal",
+  "value": {
+    "kind": "owner_device",
+    "node": "n1"
+  }
+}
