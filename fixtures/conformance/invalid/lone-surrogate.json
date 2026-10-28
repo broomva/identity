@@ -1,7 +1,8 @@
 {
   "kind": "SessionRef",
   "rust_error": "unexpected end of hex escape",
-  "schema": "reject",
+  "schema": "accept",
+  "inexpressible": "lone UTF-16 surrogate code units are rejected by parser/UTF-8 validation before or after JSON Schema evaluation",
   "value": {
     "surface": "t3",
     "harness": "codex",
