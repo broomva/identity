@@ -1,7 +1,8 @@
 {
   "kind": "Attestation",
   "rust_error": "invalid number",
-  "schema": "reject",
+  "schema": "parse_error",
+  "inexpressible": "malformed JSON number syntax (leading zero) is rejected by RFC 8259 JSON parsing before JSON Schema evaluation",
   "value": {
     "version": 1,
     "session": {

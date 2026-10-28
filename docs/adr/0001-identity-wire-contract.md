@@ -38,6 +38,7 @@ Draft 2020-12 alone cannot state the following. The raw schema accepts them, whi
 - duplicate keys are a parser rule. A standard JSON parser collapses a repeated key before the schema sees the object. Rust, Python and TypeScript reject the repeated key during parsing.
 - integral JSON numbers compare equal. `type: integer` and `const: 1` compare values. After a standard JSON parser, `1.0` and `1` are the same number, so the schema accepts the spelling that Rust, Python and TypeScript reject.
 - lone UTF-16 surrogate code units are rejected by parser/UTF-8 validation before or after JSON Schema evaluation. A permissive JSON parser decodes `\uD800` into a string that Draft 2020-12 `type: string` accepts, whereas Rust, Python and TypeScript reject lone surrogates during parsing or UTF-8 validation.
+- malformed JSON number syntax (leading zero) is rejected by RFC 8259 JSON parsing before JSON Schema evaluation. Standard JSON parsers reject `01e17` as a syntax error before a JSON Schema validator can inspect a parsed instance.
 
 ## Consequences
 

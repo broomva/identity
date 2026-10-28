@@ -66,6 +66,7 @@ const INEXPRESSIBLE: &[&str] = &[
     "duplicate keys are a parser rule",
     "integral JSON numbers compare equal",
     "lone UTF-16 surrogate code units are rejected by parser/UTF-8 validation before or after JSON Schema evaluation",
+    "malformed JSON number syntax (leading zero) is rejected by RFC 8259 JSON parsing before JSON Schema evaluation",
 ];
 
 fn root() -> PathBuf {
@@ -239,6 +240,7 @@ fn raw_schema_batch(paths: &[PathBuf]) -> BTreeMap<PathBuf, String> {
     let schema_path = root().join("schema/identity.v1.json");
     let py_code = r##"
 import json, pathlib, sys
+from jsonschema.exceptions import ValidationError
 from jsonschema.validators import Draft202012Validator
 
 schema = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
@@ -253,9 +255,14 @@ for arg in sys.argv[2:]:
     text = pathlib.Path(arg).read_text(encoding="utf-8")
     try:
         doc = json.loads(text)
-        ok = validators[doc["kind"]].is_valid(doc["value"])
-        print("accept" if ok else "reject")
-    except Exception:
+    except json.JSONDecodeError:
+        print("parse_error")
+        continue
+    validator = validators[doc["kind"]]
+    try:
+        validator.validate(doc["value"])
+        print("accept")
+    except ValidationError:
         print("reject")
 "##;
     let output = Command::new("python3")
@@ -505,8 +512,9 @@ fn corpus_matches_rust_and_both_language_validators() {
                 assert_eq!(
                     raw_schema_results[path],
                     "reject",
-                    "{} claims schema: reject without inexpressible, but raw Draft202012Validator accepted it",
-                    path.display()
+                    "{} claims schema: reject without inexpressible, but raw Draft202012Validator returned {}",
+                    path.display(),
+                    raw_schema_results[path]
                 );
             }
             Some("accept") => {
@@ -522,8 +530,27 @@ fn corpus_matches_rust_and_both_language_validators() {
                 assert_eq!(
                     raw_schema_results[path],
                     "accept",
-                    "{} claims schema: accept with inexpressible, but raw Draft202012Validator rejected it",
+                    "{} claims schema: accept with inexpressible, but raw Draft202012Validator returned {}",
+                    path.display(),
+                    raw_schema_results[path]
+                );
+            }
+            Some("parse_error") => {
+                let reason = fixture
+                    .inexpressible
+                    .as_deref()
+                    .unwrap_or_else(|| panic!("{} missing inexpressible", path.display()));
+                assert!(
+                    INEXPRESSIBLE.contains(&reason),
+                    "{} unknown inexpressible reason: {reason}",
                     path.display()
+                );
+                assert_eq!(
+                    raw_schema_results[path],
+                    "parse_error",
+                    "{} claims schema: parse_error, but raw_schema_batch returned {}",
+                    path.display(),
+                    raw_schema_results[path]
                 );
             }
             other => panic!("{} schema {other:?}", path.display()),
@@ -543,4 +570,12 @@ fn corpus_matches_rust_and_both_language_validators() {
             "ADR 0001 is missing inexpressible rule: {reason}"
         );
     }
+
+    // Regression: a JSON syntax error must report "parse_error", never masquerade as "reject".
+    let bad_json_tmp =
+        std::env::temp_dir().join(format!("identity-bad-json-{}.json", std::process::id()));
+    fs::write(&bad_json_tmp, r#"{"kind":"NodeId","value":01}"#).unwrap();
+    let bad_json_verdict = raw_schema_batch(std::slice::from_ref(&bad_json_tmp));
+    let _ = fs::remove_file(&bad_json_tmp);
+    assert_eq!(bad_json_verdict[&bad_json_tmp], "parse_error");
 }
