@@ -1,0 +1,12 @@
+{
+  "kind": "SessionRef",
+  "rust_error": "id is longer than 256 bytes",
+  "schema": "accept",
+  "inexpressible": "maxLength counts code points",
+  "value": {
+    "surface": "t3",
+    "harness": "codex",
+    "node": "n1",
+    "id": "你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你你"
+  }
+}

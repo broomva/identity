@@ -1,0 +1,6 @@
+{
+  "kind": "NodeId",
+  "rust_error": "node id is empty",
+  "schema": "reject",
+  "value": ""
+}

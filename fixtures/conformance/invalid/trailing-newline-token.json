@@ -1,0 +1,6 @@
+{
+  "kind": "Surface",
+  "rust_error": "wire name must be a lowercase token",
+  "schema": "reject",
+  "value": "t3\n"
+}

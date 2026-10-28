@@ -1,0 +1,21 @@
+{
+  "kind": "Attestation",
+  "rust_error": "invalid number",
+  "schema": "reject",
+  "value": {
+    "version": 1,
+    "session": {
+      "surface": "t3",
+      "harness": "codex",
+      "node": "n1",
+      "id": "s1"
+    },
+    "node": "n1",
+    "scope": [
+      "read"
+    ],
+    "issued_at": 1,
+    "expires_at": 2,
+    "note": 01e17
+  }
+}

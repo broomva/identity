@@ -1,0 +1,10 @@
+{
+  "kind": "Principal",
+  "rust_error": "id is empty",
+  "schema": "reject",
+  "value": {
+    "kind": "runner_job",
+    "id": "",
+    "node": "n1"
+  }
+}

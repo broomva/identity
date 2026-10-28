@@ -1,0 +1,20 @@
+{
+  "kind": "Attestation",
+  "rust_error": "scope token is invalid",
+  "schema": "reject",
+  "value": {
+    "version": 1,
+    "session": {
+      "surface": "t3",
+      "harness": "codex",
+      "node": "n1",
+      "id": "s1"
+    },
+    "node": "n1",
+    "scope": [
+      "owner/*"
+    ],
+    "issued_at": 1,
+    "expires_at": 2
+  }
+}

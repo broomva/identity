@@ -1,0 +1,12 @@
+{
+  "kind": "Principal",
+  "value": {
+    "kind": "owner",
+    "issued_at": 9223372036854775808,
+    "expires_at": 9223372036854775808,
+    "ended_at": 9223372036854775808,
+    "note": {
+      "issued_at": 9223372036854775808
+    }
+  }
+}
