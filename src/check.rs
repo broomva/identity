@@ -144,12 +144,12 @@ pub(crate) fn normalize_scope(
     for token in tokens {
         let token = token.as_ref();
         require_scope_token(token)?;
-        if scope.iter().any(|existing| existing == token) {
-            return Err(IdentityError::rule("scope tokens must be unique"));
-        }
         scope.push(token.to_owned());
     }
     scope.sort_unstable();
+    if scope.windows(2).any(|pair| pair[0] == pair[1]) {
+        return Err(IdentityError::rule("scope tokens must be unique"));
+    }
     Ok(scope)
 }
 

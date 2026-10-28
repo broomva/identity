@@ -16,19 +16,25 @@ if [ -d /Volumes/Broomva/scratch ]; then
     export CARGO_TARGET_DIR="$scratch/target"
   fi
 fi
+for dir in "${HOME}/.cargo/bin" "${HOME}/.bun/bin" "${HOME}/.local/bin"; do
+  if [ -d "$dir" ]; then
+    export PATH="$dir:${PATH}"
+  fi
+done
 JSONSCHEMA_VERSION=4.25.1
-if ! python3 -c "import jsonschema; assert jsonschema.__version__ == '$JSONSCHEMA_VERSION'" 2>/dev/null; then
+pin_jsonschema() {
+  if python3 -c "from jsonschema.validators import Draft202012Validator" 2>/dev/null; then
+    return 0
+  fi
   if [ "${IDENTITY_OFFLINE:-0}" = 1 ]; then
     echo "jsonschema==$JSONSCHEMA_VERSION is required in offline mode" >&2
     exit 1
   fi
   python3 -m pip install --user "jsonschema==$JSONSCHEMA_VERSION"
-fi
-python3 -c "import jsonschema; assert jsonschema.__version__ == '$JSONSCHEMA_VERSION'"
+  python3 -c "from jsonschema.validators import Draft202012Validator"
+}
+pin_jsonschema
 export PYTHONDONTWRITEBYTECODE=1
-if [ -x "${HOME}/.bun/bin/bun" ]; then
-  export PATH="${HOME}/.bun/bin:${PATH}"
-fi
 if ! command -v bun >/dev/null 2>&1; then
   echo "bun is required to check the TypeScript binding" >&2
   exit 1

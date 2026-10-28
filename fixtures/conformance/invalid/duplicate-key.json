@@ -1,0 +1,13 @@
+{
+  "kind": "SessionRef",
+  "rust_error": "duplicate key",
+  "schema": "accept",
+  "inexpressible": "duplicate keys are a parser rule",
+  "value": {
+    "surface": "t3",
+    "surface": "paseo",
+    "harness": "codex",
+    "node": "n1",
+    "id": "s1"
+  }
+}

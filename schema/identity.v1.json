@@ -57,7 +57,7 @@
               "not": {
                 "pattern": "\\n"
               },
-              "pattern": "^[^\\s\\u0000-\\u001F\\u007F-\\u009F]+$",
+              "pattern": "^[^\u0000- -   -     　]+$",
               "type": "string"
             },
             "node": {
@@ -104,7 +104,6 @@
           "type": "object"
         }
       },
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "additionalProperties": {
         "$ref": "#/$defs/ExtraValue1"
       },
@@ -165,7 +164,6 @@
       "type": "object"
     },
     "EndReason": {
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "allOf": [
         {
           "not": {
@@ -1159,7 +1157,6 @@
       ]
     },
     "HarnessId": {
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "allOf": [
         {
           "not": {
@@ -1260,7 +1257,7 @@
               "not": {
                 "pattern": "\\n"
               },
-              "pattern": "^[^\\s\\u0000-\\u001F\\u007F-\\u009F]+$",
+              "pattern": "^[^\u0000- -   -     　]+$",
               "type": "string"
             },
             "node": {
@@ -1307,7 +1304,6 @@
           "type": "object"
         }
       },
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "description": "Who is calling. Six closed kinds: owner, owner_device, agent, runner_job, service, unverified. The kind field is not proof.",
       "if": {
         "properties": {
@@ -1385,7 +1381,7 @@
               "not": {
                 "pattern": "\\n"
               },
-              "pattern": "^[^\\s\\u0000-\\u001F\\u007F-\\u009F]+$",
+              "pattern": "^[^\u0000- -   -     　]+$",
               "type": "string"
             },
             "kind": {
@@ -1519,7 +1515,7 @@
               "not": {
                 "pattern": "\\n"
               },
-              "pattern": "^[^\\s\\u0000-\\u001F\\u007F-\\u009F]+$",
+              "pattern": "^[^\u0000- -   -     　]+$",
               "type": "string"
             },
             "node": {
@@ -1566,7 +1562,6 @@
           "type": "object"
         }
       },
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "additionalProperties": {
         "$ref": "#/$defs/ExtraValue1"
       },
@@ -1682,7 +1677,7 @@
               "not": {
                 "pattern": "\\n"
               },
-              "pattern": "^[^\\s\\u0000-\\u001F\\u007F-\\u009F]+$",
+              "pattern": "^[^\u0000- -   -     　]+$",
               "type": "string"
             },
             "node": {
@@ -1729,7 +1724,6 @@
           "type": "object"
         }
       },
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "additionalProperties": {
         "$ref": "#/$defs/ExtraValue1"
       },
@@ -1752,7 +1746,7 @@
           "not": {
             "pattern": "\\n"
           },
-          "pattern": "^[^\\s\\u0000-\\u001F\\u007F-\\u009F]+$",
+          "pattern": "^[^\u0000- -   -     　]+$",
           "type": "string"
         },
         "node": {
@@ -1790,7 +1784,6 @@
           "type": "string"
         }
       },
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "additionalProperties": {
         "$ref": "#/$defs/ExtraValue1"
       },
@@ -1835,7 +1828,7 @@
           "not": {
             "pattern": "\\n"
           },
-          "pattern": "^[^\\s\\u0000-\\u001F\\u007F-\\u009F]+$",
+          "pattern": "^[^\u0000- -   -     　]+$",
           "type": "string"
         },
         "node": {
@@ -1883,7 +1876,6 @@
       "type": "object"
     },
     "Surface": {
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "allOf": [
         {
           "not": {
@@ -1918,7 +1910,35 @@
   },
   "$id": "https://github.com/broomva/identity/blob/v0.1.0/schema/identity.v1.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "anyOf": [
+    {
+      "$ref": "#/$defs/Principal"
+    },
+    {
+      "$ref": "#/$defs/SessionRef"
+    },
+    {
+      "$ref": "#/$defs/Attestation"
+    },
+    {
+      "$ref": "#/$defs/SessionEnd"
+    },
+    {
+      "$ref": "#/$defs/SessionKey"
+    },
+    {
+      "$ref": "#/$defs/NodeId"
+    },
+    {
+      "$ref": "#/$defs/Surface"
+    },
+    {
+      "$ref": "#/$defs/HarnessId"
+    },
+    {
+      "$ref": "#/$defs/EndReason"
+    }
+  ],
   "description": "Wire contract version 1. A version field must be the integer 1. Node ids are 1-64 ASCII alphanumeric characters. Wire tokens are lowercase and reject a doubled hyphen. Opaque ids are 1-256 code points without whitespace or controls. Scope tokens are unique. Extra values are integers in the i64 or u64 range and nest at most 32 levels. An unverified principal has no session. Node equality, lifetime arithmetic, byte length, duplicate keys, and the spelling of an integral number are not expressible here.",
-  "title": "identity.v1",
-  "version": 1
+  "title": "identity.v1"
 }

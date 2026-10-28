@@ -94,7 +94,7 @@ MUTANTS = [
         "true",
     ),
     ("src/check.rs", 'if raw.contains("..") {', "if false {"),
-    ("src/check.rs", "if scope.iter().any(|existing| existing == token) {", "if false {"),
+    ("src/check.rs", "if scope.windows(2).any(|pair| pair[0] == pair[1]) {", "if false {"),
     ("src/check.rs", "scope.sort_unstable();", ""),
     ("src/check.rs", "if version != CONTRACT_VERSION {", "if false {"),
     (
@@ -215,6 +215,26 @@ MUTANTS = [
         "buf.push_str(&canonical_object(end.session().extra()));",
         'buf.push_str("{}");',
     ),
+    (
+        "bindings/python/identity_schema.py",
+        "if ttl <= 0 or ttl > MAX_TTL_MS:",
+        "if False:",
+    ),
+    (
+        "bindings/python/identity_schema.py",
+        'if not isinstance(session, dict) or value.get("node") != session.get("node"):',
+        "if False:",
+    ),
+    (
+        "bindings/typescript/check.ts",
+        "if (ttl <= 0n || ttl > MAX_TTL_MS) {",
+        "if (false) {",
+    ),
+    (
+        "bindings/typescript/check.ts",
+        "if (!isObject(session) || value.node !== session.node) {",
+        "if (false) {",
+    ),
 ] + rust_escapes()
 
 
@@ -273,85 +293,154 @@ def failing_test(log: pathlib.Path) -> str:
     return ""
 
 
+def find_bun() -> str:
+    found = shutil.which("bun")
+    if found:
+        return found
+    for rel in (".bun/bin/bun", ".local/bin/bun"):
+        candidate = pathlib.Path.home() / rel
+        if candidate.is_file():
+            return str(candidate)
+    return "bun"
+
+
 def main() -> int:
     os.chdir(ROOT)
     if "--anchors" in sys.argv:
         return check_anchors(ROOT)
-    copy = pathlib.Path(tempfile.mkdtemp())
-    listed = subprocess.run(
-        ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
-        cwd=ROOT,
-        check=True,
-        capture_output=True,
-    )
-    names = [name for name in listed.stdout.split(b"\0") if name]
-    existing = b"\0".join(name for name in names if (ROOT / os.fsdecode(name)).exists()) + (b"\0" if names else b"")
-    tar = subprocess.run(["tar", "--null", "-T", "-", "-cf", "-"], cwd=ROOT, input=existing, capture_output=True, check=True)
-    subprocess.run(["tar", "-xf", "-"], cwd=copy, input=tar.stdout, check=True)
-    env = os.environ.copy()
-    env["CARGO_TARGET_DIR"] = str(copy / ".target")
-    env["CARGO_TERM_COLOR"] = "never"
-    subprocess.run(["git", "init", "-q"], cwd=copy, check=True)
-    exclude = copy / ".git" / "info" / "exclude"
-    exclude.parent.mkdir(parents=True, exist_ok=True)
-    exclude.write_text("/.target\n")
-    subprocess.run(["git", "add", "-A"], cwd=copy, check=True)
-    subprocess.run(
-        ["git", "-c", "core.hooksPath=/dev/null", "-c", "user.name=mutation", "-c", "user.email=mutation@localhost", "commit", "-qm", "base"],
-        cwd=copy,
-        check=True,
-    )
-    log = copy / "log"
-    bun = shutil.which("bun") or str(pathlib.Path.home() / ".bun" / "bin" / "bun")
-    if run([bun, "install", "--frozen-lockfile"], copy / "bindings" / "typescript", log, env) != 0:
-        print("bun install failed in the mutation copy")
-        sys.stdout.write(log.read_text(errors="replace"))
-        return 2
-    test_cmd = ["timeout", LIMIT, "cargo", "test", "-q", "--workspace", "--locked"]
-    if run(test_cmd, copy, log, env) != 0:
-        print("baseline is red: fix the suite before reading any mutant verdict")
-        sys.stdout.write(log.read_text(errors="replace"))
-        return 2
-    print("baseline  green")
-    failed = 0
-    killed = 0
-    for item in MUTANTS:
-        path, old, new, index = spec(item)
-        subprocess.run(["git", "checkout", "-q", "--", "."], cwd=copy, check=True)
+    with tempfile.TemporaryDirectory() as tmp:
+        copy = pathlib.Path(tmp)
+        listed = subprocess.run(
+            ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+        )
+        names = [name for name in listed.stdout.split(b"\0") if name]
+        existing = b"\0".join(
+            name for name in names if (ROOT / os.fsdecode(name)).exists()
+        ) + (b"\0" if names else b"")
+        tar = subprocess.run(
+            ["tar", "--null", "-T", "-", "-cf", "-"],
+            cwd=ROOT,
+            input=existing,
+            capture_output=True,
+            check=True,
+        )
+        subprocess.run(["tar", "-xf", "-"], cwd=copy, input=tar.stdout, check=True)
+        env = os.environ.copy()
+        env["CARGO_TARGET_DIR"] = str(copy / ".target")
+        env["CARGO_TERM_COLOR"] = "never"
+        bun = find_bun()
+        bun_dir = str(pathlib.Path(bun).parent)
+        cargo_dir = str(pathlib.Path.home() / ".cargo" / "bin")
+        env["PATH"] = f"{cargo_dir}:{bun_dir}:{env.get('PATH', '')}"
+        subprocess.run(["git", "init", "-q"], cwd=copy, check=True)
+        exclude = copy / ".git" / "info" / "exclude"
+        exclude.parent.mkdir(parents=True, exist_ok=True)
+        exclude.write_text("/.target\n")
+        subprocess.run(["git", "add", "-A"], cwd=copy, check=True)
         subprocess.run(
-            ["git", "clean", "-qfdx", "-e", "log", "-e", ".target", "-e", "bindings/typescript/node_modules"],
+            [
+                "git",
+                "-c",
+                "core.hooksPath=/dev/null",
+                "-c",
+                "user.name=mutation",
+                "-c",
+                "user.email=mutation@localhost",
+                "commit",
+                "-qm",
+                "base",
+            ],
             cwd=copy,
             check=True,
         )
-        file = copy / path
-        text = file.read_text()
-        updated = replace_nth(text, old, new, index)
-        if updated is None:
-            print(f"ANCHOR MISSING  {path} index {index}: {old!r}")
-            failed = 1
-            continue
-        file.write_text(updated)
-        code = run(test_cmd, copy, log, env)
-        body = log.read_text(errors="replace")
-        caught = failing_test(log)
-        label = f"{path} index {index}: {old!r}"
-        if code == 0:
-            print(f"SURVIVED  {label}")
-            failed = 1
-        elif re.search(r"^error\[E[0-9]+\]|could not compile|failed to select a version", body, re.M):
-            print(f"NO BUILD  {label}")
-            failed = 1
-        elif code != 124 and caught and "test result: FAILED" in body:
-            print(f"killed    {label}  [{caught}]")
-            killed += 1
-        else:
-            print(f"UNCLEAR   {label} (exit {code})")
-            print("\n".join(body.splitlines()[-8:]))
-            failed = 1
-    print(f"mutation  {killed}/{len(MUTANTS)} killed")
-    if failed or killed != len(MUTANTS):
-        return 1
-    return 0
+        log = copy / "log"
+        if run([bun, "install", "--frozen-lockfile"], copy / "bindings" / "typescript", log, env) != 0:
+            print("bun install failed in the mutation copy")
+            sys.stdout.write(log.read_text(errors="replace"))
+            return 2
+        full_cmd = ["timeout", LIMIT, "cargo", "test", "-q", "--workspace", "--locked"]
+        fast_cmd = ["timeout", LIMIT, "cargo", "test", "-q", "--lib", "--test", "serde_roundtrip", "--locked"]
+        conf_cmd = ["timeout", LIMIT, "cargo", "test", "-q", "--test", "conformance", "--locked"]
+        if run(full_cmd, copy, log, env) != 0:
+            print("baseline is red: fix the suite before reading any mutant verdict")
+            sys.stdout.write(log.read_text(errors="replace"))
+            return 2
+        print("baseline  green")
+
+        # Verify no-op mutant compiles and survives
+        lib_rs = copy / "src" / "lib.rs"
+        orig_lib = lib_rs.read_text()
+        noop_lib = orig_lib.replace(
+            "pub const CONTRACT_VERSION: u32 = 1;",
+            "pub const CONTRACT_VERSION: u32 = 1; // noop mutant",
+            1,
+        )
+        assert noop_lib != orig_lib, "noop anchor missing in src/lib.rs"
+        lib_rs.write_text(noop_lib)
+        if run(fast_cmd, copy, log, env) != 0:
+            print("NOOP FAILED: no-op mutant did not survive")
+            sys.stdout.write(log.read_text(errors="replace"))
+            return 1
+        lib_rs.write_text(orig_lib)
+        print("noop      survived [control]")
+
+        failed = 0
+        killed = 0
+        for item in MUTANTS:
+            path, old, new, index = spec(item)
+            subprocess.run(["git", "checkout", "-q", "--", "."], cwd=copy, check=True)
+            subprocess.run(
+                [
+                    "git",
+                    "clean",
+                    "-qfdx",
+                    "-e",
+                    "log",
+                    "-e",
+                    ".target",
+                    "-e",
+                    "bindings/typescript/node_modules",
+                ],
+                cwd=copy,
+                check=True,
+            )
+            file = copy / path
+            text = file.read_text()
+            updated = replace_nth(text, old, new, index)
+            if updated is None:
+                print(f"ANCHOR MISSING  {path} index {index}: {old!r}")
+                failed = 1
+                continue
+            file.write_text(updated)
+            if path.startswith("bindings/"):
+                code = run(conf_cmd, copy, log, env)
+            else:
+                code = run(fast_cmd, copy, log, env)
+                if code == 0:
+                    code = run(conf_cmd, copy, log, env)
+            body = log.read_text(errors="replace")
+            caught = failing_test(log)
+            label = f"{path} index {index}: {old!r}"
+            if code == 0:
+                print(f"SURVIVED  {label}")
+                failed = 1
+            elif re.search(r"^error\[E[0-9]+\]|could not compile|failed to select a version", body, re.M):
+                print(f"NO BUILD  {label}")
+                failed = 1
+            elif code != 124 and caught and "test result: FAILED" in body:
+                print(f"killed    {label}  [{caught}]")
+                killed += 1
+            else:
+                print(f"UNCLEAR   {label} (exit {code})")
+                print("\n".join(body.splitlines()[-8:]))
+                failed = 1
+        print(f"mutation  {killed}/{len(MUTANTS)} killed")
+        if failed or killed != len(MUTANTS):
+            return 1
+        return 0
 
 
 if __name__ == "__main__":
