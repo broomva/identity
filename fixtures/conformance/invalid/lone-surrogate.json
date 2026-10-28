@@ -1,0 +1,12 @@
+{
+  "kind": "SessionRef",
+  "rust_error": "unexpected end of hex escape",
+  "schema": "reject",
+  "value": {
+    "surface": "t3",
+    "harness": "codex",
+    "node": "n1",
+    "id": "s1",
+    "note": "bad\ud800text"
+  }
+}

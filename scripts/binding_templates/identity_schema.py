@@ -81,7 +81,28 @@ def opaque_id_error(raw, field):
     return None
 
 
+def check_text(value):
+    stack = [value]
+    while stack:
+        item = stack.pop()
+        if isinstance(item, str):
+            try:
+                item.encode("utf-8")
+            except UnicodeEncodeError:
+                return "strings must be valid Unicode text"
+        elif isinstance(item, list):
+            stack.extend(item)
+        elif isinstance(item, dict):
+            for key, child in item.items():
+                stack.append(key)
+                stack.append(child)
+    return None
+
+
 def semantic_error(kind, value):
+    text_error = check_text(value)
+    if text_error is not None:
+        return text_error
     number_error = check_numbers(value)
     if number_error is not None:
         return number_error
@@ -152,7 +173,7 @@ def evaluate_file(target):
         )
     except (InvalidDocument, ValueError):
         return None
-    if not isinstance(fixture, dict) or "kind" not in fixture or "value" not in fixture:
+    if not isinstance(fixture, dict) or not isinstance(fixture.get("kind"), str) or "value" not in fixture:
         return None
     kind = fixture["kind"]
     value = fixture["value"]

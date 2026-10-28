@@ -23,7 +23,7 @@ for dir in "${HOME}/.cargo/bin" "${HOME}/.bun/bin" "${HOME}/.local/bin"; do
 done
 JSONSCHEMA_VERSION=4.25.1
 pin_jsonschema() {
-  if python3 -c "from jsonschema.validators import Draft202012Validator" 2>/dev/null; then
+  if python3 -c "import importlib.metadata; from jsonschema.validators import Draft202012Validator; assert importlib.metadata.version('jsonschema') == '$JSONSCHEMA_VERSION'" 2>/dev/null; then
     return 0
   fi
   if [ "${IDENTITY_OFFLINE:-0}" = 1 ]; then
@@ -31,7 +31,7 @@ pin_jsonschema() {
     exit 1
   fi
   python3 -m pip install --user "jsonschema==$JSONSCHEMA_VERSION"
-  python3 -c "from jsonschema.validators import Draft202012Validator"
+  python3 -c "import importlib.metadata; from jsonschema.validators import Draft202012Validator; assert importlib.metadata.version('jsonschema') == '$JSONSCHEMA_VERSION'"
 }
 pin_jsonschema
 export PYTHONDONTWRITEBYTECODE=1

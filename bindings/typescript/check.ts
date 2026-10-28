@@ -77,7 +77,11 @@ function parseString(parser: Parser): string {
       if (parser.index >= parser.source.length) throw new Error("unterminated string");
       parser.index += 1;
     } else if (code === 0x22) {
-      return JSON.parse(parser.source.slice(start, parser.index)) as string;
+      const decoded = JSON.parse(parser.source.slice(start, parser.index)) as string;
+      if (/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(decoded)) {
+        throw new Error("lone surrogate in string escape");
+      }
+      return decoded;
     }
   }
   throw new Error("unterminated string");

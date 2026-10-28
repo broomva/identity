@@ -42,6 +42,7 @@ const PROBES: &[&str] = &[
     "invalid-scope",
     "invalid-service-name",
     "leading-zero-number",
+    "lone-surrogate",
     "long-id",
     "long-node",
     "multibyte-id",

@@ -296,7 +296,7 @@ def failing_test(log: pathlib.Path) -> str:
 def find_bun() -> str:
     found = shutil.which("bun")
     if found:
-        return found
+        return os.path.abspath(found)
     for rel in (".bun/bin/bun", ".local/bin/bun"):
         candidate = pathlib.Path.home() / rel
         if candidate.is_file():
