@@ -59,6 +59,16 @@ const PROBES: &[&str] = &[
     "wrong-node",
 ];
 
+const INEXPRESSIBLE: &[&str] = &[
+    "bound node equals session node",
+    "lifetime is not arithmetic",
+    "maxLength counts code points",
+    "duplicate keys are a parser rule",
+    "integral JSON numbers compare equal",
+    "lone UTF-16 surrogate code units are rejected by parser/UTF-8 validation before or after JSON Schema evaluation",
+    "malformed JSON number syntax (leading zero) is rejected by RFC 8259 JSON parsing before JSON Schema evaluation",
+];
+
 fn root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
 }
@@ -226,6 +236,57 @@ fn language_batch(
     map
 }
 
+fn raw_schema_batch(paths: &[PathBuf]) -> BTreeMap<PathBuf, String> {
+    let schema_path = root().join("schema/identity.v1.json");
+    let py_code = r##"
+import json, pathlib, sys
+from jsonschema.exceptions import ValidationError
+from jsonschema.validators import Draft202012Validator
+
+schema = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+validators = {
+    name: Draft202012Validator({**schema, "$ref": f"#/$defs/{name}"})
+    for name in (
+        "Principal", "SessionRef", "Attestation", "SessionEnd",
+        "SessionKey", "NodeId", "Surface", "HarnessId", "EndReason",
+    )
+}
+for arg in sys.argv[2:]:
+    text = pathlib.Path(arg).read_text(encoding="utf-8")
+    try:
+        doc = json.loads(text)
+    except json.JSONDecodeError:
+        print("parse_error")
+        continue
+    validator = validators[doc["kind"]]
+    try:
+        validator.validate(doc["value"])
+        print("accept")
+    except ValidationError:
+        print("reject")
+"##;
+    let output = Command::new("python3")
+        .arg("-c")
+        .arg(py_code)
+        .arg(&schema_path)
+        .args(paths)
+        .output()
+        .expect("failed to run python3 raw schema check");
+    assert!(
+        output.status.success(),
+        "raw schema check failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let lines: Vec<&str> = stdout.lines().collect();
+    assert_eq!(lines.len(), paths.len());
+    paths
+        .iter()
+        .cloned()
+        .zip(lines.into_iter().map(str::to_owned))
+        .collect()
+}
+
 fn rust_roundtrip(kind: &str, raw_value: &str) -> Result<(String, Option<Vec<u8>>), String> {
     match kind {
         "Principal" => {
@@ -323,6 +384,7 @@ fn corpus_matches_rust_and_both_language_validators() {
 
     let py_results = language_batch("python3", &py_script, &all_paths);
     let ts_results = language_batch(&bun, &ts_script, &all_paths);
+    let raw_schema_results = raw_schema_batch(&all_paths);
 
     // Also verify single-file CLI invocation on one valid and one invalid fixture
     for (sample, expected) in [(&valid_paths[0], "accept"), (&invalid_paths[0], "reject")] {
@@ -348,6 +410,12 @@ fn corpus_matches_rust_and_both_language_validators() {
             .unwrap_or_else(|err| panic!("{} rust {}", path.display(), err));
         assert!(fixture.rust_error.is_none(), "{}", path.display());
         assert!(fixture.inexpressible.is_none(), "{}", path.display());
+        assert_eq!(
+            raw_schema_results[path],
+            "accept",
+            "{} raw Draft202012Validator rejected valid fixture",
+            path.display()
+        );
 
         let py_envelope = py_results[path]
             .as_ref()
@@ -441,9 +509,49 @@ fn corpus_matches_rust_and_both_language_validators() {
         match fixture.schema.as_deref() {
             Some("reject") => {
                 assert!(fixture.inexpressible.is_none(), "{}", path.display());
+                assert_eq!(
+                    raw_schema_results[path],
+                    "reject",
+                    "{} claims schema: reject without inexpressible, but raw Draft202012Validator returned {}",
+                    path.display(),
+                    raw_schema_results[path]
+                );
             }
             Some("accept") => {
-                assert!(fixture.inexpressible.is_some(), "{}", path.display());
+                let reason = fixture
+                    .inexpressible
+                    .as_deref()
+                    .unwrap_or_else(|| panic!("{} missing inexpressible", path.display()));
+                assert!(
+                    INEXPRESSIBLE.contains(&reason),
+                    "{} unknown inexpressible reason: {reason}",
+                    path.display()
+                );
+                assert_eq!(
+                    raw_schema_results[path],
+                    "accept",
+                    "{} claims schema: accept with inexpressible, but raw Draft202012Validator returned {}",
+                    path.display(),
+                    raw_schema_results[path]
+                );
+            }
+            Some("parse_error") => {
+                let reason = fixture
+                    .inexpressible
+                    .as_deref()
+                    .unwrap_or_else(|| panic!("{} missing inexpressible", path.display()));
+                assert!(
+                    INEXPRESSIBLE.contains(&reason),
+                    "{} unknown inexpressible reason: {reason}",
+                    path.display()
+                );
+                assert_eq!(
+                    raw_schema_results[path],
+                    "parse_error",
+                    "{} claims schema: parse_error, but raw_schema_batch returned {}",
+                    path.display(),
+                    raw_schema_results[path]
+                );
             }
             other => panic!("{} schema {other:?}", path.display()),
         }
@@ -456,4 +564,18 @@ fn corpus_matches_rust_and_both_language_validators() {
     }
     let adr = fs::read_to_string(root().join("docs/adr/0001-identity-wire-contract.md")).unwrap();
     assert!(adr.contains("Python and TypeScript reject"));
+    for reason in INEXPRESSIBLE {
+        assert!(
+            adr.contains(reason),
+            "ADR 0001 is missing inexpressible rule: {reason}"
+        );
+    }
+
+    // Regression: a JSON syntax error must report "parse_error", never masquerade as "reject".
+    let bad_json_tmp =
+        std::env::temp_dir().join(format!("identity-bad-json-{}.json", std::process::id()));
+    fs::write(&bad_json_tmp, r#"{"kind":"NodeId","value":01}"#).unwrap();
+    let bad_json_verdict = raw_schema_batch(std::slice::from_ref(&bad_json_tmp));
+    let _ = fs::remove_file(&bad_json_tmp);
+    assert_eq!(bad_json_verdict[&bad_json_tmp], "parse_error");
 }

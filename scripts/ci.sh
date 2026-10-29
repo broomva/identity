@@ -45,5 +45,8 @@ step python3 scripts/generate_bindings.py --check
 step cargo fmt --all --check
 step cargo clippy --workspace --all-targets --locked -- -D warnings
 step cargo test --workspace --locked
-step scripts/mutation-check.sh
+if [ "${SKIP_MUTANTS:-0}" != 1 ]; then
+  step scripts/mutation-check.sh
+fi
+step bash scripts/acceptance/identity.sh --goldens --selftest
 echo "== ci green"

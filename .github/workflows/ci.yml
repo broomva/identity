@@ -27,4 +27,5 @@ jobs:
         with:
           bun-version: "1.3.14"
       - uses: Swatinem/rust-cache@v2
-      - run: bash scripts/ci.sh
+      - run: SKIP_MUTANTS=1 bash scripts/ci.sh
+      - run: bash scripts/acceptance/identity.sh --goldens --mutants --selftest
